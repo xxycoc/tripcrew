@@ -30,10 +30,12 @@ wishlist add --name NAME --area AREA --city CITY
              [--hours HOURS] [--url SOURCE_URL] [--verified] [--note NOTE]
 wishlist list [--city CITY] [--category food|attraction|tip] [--unplanned]
 wishlist remove WISHLIST_ID
+wishlist price WISHLIST_ID --price-jpy AMOUNT|unknown --source-note NOTE
 
-spend add AMOUNT JPY|SGD --note NOTE [--day N] [--category NAME]
+spend add AMOUNT JPY|SGD --note NOTE [--day N] [--category NAME] [--receipt PATH]
 spend list
 budget status [--day N]
+budget check [--day N]
 fx convert AMOUNT JPY|SGD JPY|SGD
 
 reel fetch URL [--audio]
@@ -86,6 +88,60 @@ and the current fields. Wishlist, reel and FX commands do not require a trip.
 
 `wishlist add` leaves price unknown when `--price-jpy` is omitted; zero means
 free. Entries start unverified unless the agent explicitly supplies `--verified`.
+Budget can later set or update an estimate with `wishlist price ID --price-jpy
+AMOUNT --source-note "Official menu; lunch set"`. The required source note is
+stored as `price_source_note`, separately from the place note and source URL.
+Use `--price-jpy unknown` to clear an outdated estimate; it never becomes free.
+
+### Day cost check
+
+`budget check --day N` reads that day's planned stops, including an empty day.
+Without `--day`, it checks only days with planned stops. It requires both trip
+dates and the budget, like `budget status`. It never changes the trip, wishlist
+or spending; normal FX cache refreshes may update `fx.json`.
+
+The allowance is the sum of all categories except `flight`, split across every
+trip day. With no categories it uses the total budget. Remainder cents go to the
+earliest days, so allowances sum exactly to the available budget. It converts
+the day's known JPY estimates to SGD, rounds the day sum once, and adds actual
+SGD spending already booked for that day. Pre-trip expenses have no day and are
+excluded. All day-tagged spending counts, regardless of category. Actuals keep
+their historical FX. Planned estimates are added in full; there is no matching
+of receipts to itinerary stops, so an already-paid planned stop can count twice.
+
+JSON returns `days` and `fx`. Each day includes `estimate_jpy`, `estimate_sgd`,
+`actual_sgd`, `total_sgd`, `allowance_sgd`, and `difference_sgd` (total minus
+allowance: positive is over, negative is under), `status` (`over`, `under`, or
+`at_allowance`), and the boolean `over_budget`. `unknown_count`, `unknown_stops`
+and `complete` distinguish missing estimates from free stops. An under result
+with unknown prices is only a minimum known cost. `most_expensive_stops` lists
+up to three known stops in descending JPY order, with IDs, names, areas, cities
+and estimated amounts, to help Planner choose a nearby replacement with Budget.
+
+All checked days share one FX snapshot from `money.convert`, with the same
+12-hour cache and explicit stale/offline warning as FX conversion. If all known
+costs are zero, no rate is needed. A positive estimate with no usable rate fails
+instead of appearing free. Planner may run this read-only command, quote its
+over/under result and recheck after changing stops; Budget owns price updates
+and spending.
+
+### Receipt images
+
+`spend add ... --receipt PATH` accepts local JPEG, PNG, WebP, GIF, BMP and TIFF
+images up to 10 MiB. Both the extension and image contents are checked, including
+a real first-frame decode with the existing PyAV dependency. Text, PDFs, videos,
+renamed non-images and unreadable/corrupt images are rejected. The CLI does not
+read totals or run OCR: Budget must view the image and identify the total and
+currency before logging it.
+
+After validation and conversion, the new expense copies the image to
+`state/receipts/s_<id>.<original-extension>`, preserving the bytes and extension.
+The spend item's `receipt` field is relative to the state directory, for example
+`receipts/s_<id>.jpg`; `spend list` includes it in human and JSON output. The
+source stays in place. Failed recording removes the new copy; invalid spending,
+an invalid image or failed FX never leaves a receipt copy. Omit `--receipt` for
+ordinary spending; old entries without the field still list normally. These
+files remain under the ignored state directory, including with `TRIPCREW_STATE`.
 
 ## State and money
 

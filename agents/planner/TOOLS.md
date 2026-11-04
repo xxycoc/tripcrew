@@ -13,6 +13,7 @@ Run from `agents/planner/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh
 | `trip day N add ID` | `--position N` | Add an existing wishlist place; default append. |
 | `trip day N remove ID` | none | Remove a stop from that day, retaining its wishlist entry. |
 | `trip day N move ID` | `--position N`, `--to-day N` | Reorder or move a stop; position is its final position after removal. |
+| `budget check` | `--day N` | Read Budget's day cost check: over/under, difference, unknown prices and most expensive planned stops. No price or spend edits. |
 
 ## Windows examples
 
@@ -30,6 +31,7 @@ before editing itinerary days. Budget sets the budget separately.
 ..\..\bin\tripcrew.cmd trip day 1 add w_0123456789ab --position 1
 ..\..\bin\tripcrew.cmd trip day 1 move w_0123456789ab --to-day 2 --position 1
 ..\..\bin\tripcrew.cmd trip day 2 remove w_0123456789ab
+..\..\bin\tripcrew.cmd budget check --day 2 --json
 ```
 
 ## sh equivalents
@@ -43,6 +45,7 @@ before editing itinerary days. Budget sets the budget separately.
 ../../bin/tripcrew trip day 1 add w_0123456789ab --position 1
 ../../bin/tripcrew trip day 1 move w_0123456789ab --to-day 2 --position 1
 ../../bin/tripcrew trip day 2 remove w_0123456789ab
+../../bin/tripcrew budget check --day 2 --json
 ```
 
 Changes that would exclude planned stops or recorded expenses fail. A move to a day already containing that ID also fails. Source: [CLI reference](../../tools/README.md).
@@ -54,3 +57,22 @@ instead of a link. The mobile browser limit is three waypoints, so only the firs
 five stops are included; keep any omission warning with the link. `trip map`
 lists planned days only, in day order. No state is changed and no source URLs are
 parsed. Maps may ignore unsupported waypoints; links are not verified routes.
+
+## Work with Budget on an expensive day
+
+Planner never quotes prices or makes its own estimates. It may repeat amounts
+printed by `budget check`, including how much a day is over or under. Budget
+owns the estimates and all recorded spending; request missing or updated
+estimates from Budget.
+
+Run `budget check --day N` after filling or changing a day; omit `--day` to
+check every planned day. When over, use the returned stop IDs, areas and cities
+to find a nearby alternative, ask Budget to estimate it, swap stops with the
+existing itinerary commands, then recheck. Do not infer an alternative's price
+from location or category. Only repeat money amounts from the check output.
+
+The check adds known planned estimates to booked spending and compares that
+against the non-flight daily allowance. It does not match already-paid stops
+to expenses. `unknown_count` above zero and `complete: false` mean the result
+is incomplete, even when `status` says under. Preserve any FX stale warning.
+This command cannot change the trip, prices or spending; it may refresh FX cache.
