@@ -5,6 +5,8 @@ agent_name = "custom.viewer.owner"
 # Filled by registration in the key file; set this only for an existing agent.
 agent_id = ""
 api_key_path = ".local/viewer.json"
+# Optional default for the post command; use the Switch room ID, not Telegram's chat ID.
+room_id = ""
 
 [server]
 ws_port = 8770

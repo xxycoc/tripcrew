@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo"
+mkdir -p relay/.local
+export PYTHONPATH="$repo/relay"
+export PYTHONUNBUFFERED=1
+export PYTHONDONTWRITEBYTECODE=1
+python="$repo/relay/.venv/bin/python"
+if [ ! -x "$python" ]; then python="$repo/relay/.venv/Scripts/python.exe"; fi
+exec "$python" -m relay --config "$repo/relay/relay.local.toml" post "$@" >> relay/.local/brief.log 2>&1

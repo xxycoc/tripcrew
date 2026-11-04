@@ -22,6 +22,30 @@ class ViewerError(Exception):
     pass
 
 
+async def post(config, text: str, room_id: str | None = None):
+    room = config.room_id if room_id is None else room_id
+    if not isinstance(room, str) or not room.strip():
+        raise ValueError("Room not set; pass --room or set switch.room_id in relay.local.toml")
+    if not text.strip():
+        raise ValueError("Message text must not be empty")
+    agent_id, key = config.credentials()
+    route = config.base_url + "/agents/" + quote(agent_id, safe="") + "/message"
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+        async with session.post(route, json={"room_id": room, "content": text},
+                                headers={"Authorization": f"Bearer {key}"},
+                                allow_redirects=False) as response:
+            if response.status != 200:
+                raise ValueError(f"Switch post failed: HTTP {response.status}; check bridge, key and room membership")
+            # Do not echo server bodies: errors may include credentials or message text.
+            try:
+                result = await response.json()
+            except (ValueError, aiohttp.ContentTypeError) as from_error:
+                raise ValueError("Switch post returned an invalid receipt; delivery unknown, check the room before retrying") from from_error
+    if not isinstance(result, dict) or result.get("ok") is not True or not isinstance(result.get("event_id"), str) or not result["event_id"]:
+        raise ValueError("Switch post returned an invalid receipt; delivery unknown, check the room before retrying")
+    return {"ok": True, "room_id": room, "event_id": result["event_id"]}
+
+
 @dataclass
 class Frame:
     kind: str
