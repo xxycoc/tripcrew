@@ -11,6 +11,8 @@ enabled = true
 
 [features.network_proxy.domains]
 "api.frankfurter.dev" = "allow"
+# The local relay that animates Budget's cards in the live view.
+"127.0.0.1" = "allow"
 
 [shell_environment_policy.set]
 # Reuse tools/.venv after the owner's initial uv sync, without registry access
