@@ -33,16 +33,17 @@ def test_fresh_trip_show_is_empty_and_explains_setup(call, capsys):
     (["--budget-sgd", "0", "--end", "2026-12-16"], ["Trip dates aren't set yet"]),
 ])
 @pytest.mark.parametrize("day", [[], ["--day", "1"]])
-def test_budget_requires_budget_and_dates(call, capsys, settings, missing, day):
+@pytest.mark.parametrize("action", ["status", "check"])
+def test_budget_requires_budget_and_dates(call, capsys, settings, missing, day, action):
     if settings:
         call("trip", "set", *settings)
     before = Store().read("trip")
-    result = call("budget", "status", *day, ok=False)
+    result = call("budget", action, *day, ok=False)
     for reason in missing:
         assert reason in result["reason"]
     assert "trip set" in result["reason"]
     assert "totals" not in result and "days" not in result
-    assert main(["budget", "status", *day]) == 1
+    assert main(["budget", action, *day]) == 1
     output = capsys.readouterr().out
     for reason in missing:
         assert reason in output

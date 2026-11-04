@@ -9,6 +9,7 @@
       "Bash(../../bin/tripcrew trip day *)",
       "Bash(../../bin/tripcrew wishlist --help)",
       "Bash(../../bin/tripcrew wishlist list *)",
+      "Bash(../../bin/tripcrew budget check *)",
       "PowerShell(..\\..\\bin\\tripcrew.cmd --help)",
       "PowerShell(..\\..\\bin\\tripcrew.cmd trip --help)",
       "PowerShell(..\\..\\bin\\tripcrew.cmd trip show *)",
@@ -16,6 +17,7 @@
       "PowerShell(..\\..\\bin\\tripcrew.cmd trip day *)",
       "PowerShell(..\\..\\bin\\tripcrew.cmd wishlist --help)",
       "PowerShell(..\\..\\bin\\tripcrew.cmd wishlist list *)",
+      "PowerShell(..\\..\\bin\\tripcrew.cmd budget check *)",
       "WebSearch",
       "WebFetch"
     ],

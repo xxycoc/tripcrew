@@ -5,7 +5,7 @@ import json
 import sys
 from uuid import uuid4
 
-from . import money, reels
+from . import money, receipts, reels
 from .store import Store
 
 
@@ -69,6 +69,10 @@ def parser():
     listing.add_argument("--unplanned", action="store_true")
     remove = commands.add_parser("remove", help="Remove a place after removing its itinerary references.")
     remove.add_argument("id")
+    price = commands.add_parser("price", help="Budget: set or update an estimate with its source note.")
+    price.add_argument("id")
+    price.add_argument("--price-jpy", required=True, help="Estimated JPY amount; 0 is free, unknown clears it.")
+    price.add_argument("--source-note", required=True, help="Short source and context for this estimate.")
 
     spend = groups.add_parser("spend", help="Record actual spending. JPY entries keep the original and FX used.")
     commands = spend.add_subparsers(dest="action", required=True)
@@ -78,12 +82,15 @@ def parser():
     add.add_argument("--note", required=True)
     add.add_argument("--day", type=int, help="Trip day; omit for spending before the trip, such as flights.")
     add.add_argument("--category", help="Budget category; required once categories are set.")
+    add.add_argument("--receipt", help="Local receipt image to copy into state/receipts/ when recorded (max 10 MiB).")
     commands.add_parser("list", help="List expenses with original currency and booked SGD amounts.")
 
     budget = groups.add_parser("budget", help="Budget and actual spending in SGD; does not edit itinerary.")
     commands = budget.add_subparsers(dest="action", required=True)
     status = commands.add_parser("status", help="Total, per-category and daily budget/spent/left. Categories at 80%% or more are flagged.")
     status.add_argument("--day", type=int, help="Show only this day's detail, plus trip totals.")
+    check = commands.add_parser("check", help="Read-only planned costs plus actual spending against non-flight daily allowance.")
+    check.add_argument("--day", type=int, help="Check this day; omit for every day with planned stops.")
 
     fx = groups.add_parser("fx", help="Frankfurter JPY/SGD conversion; 12-hour cache, explicit stale fallback.")
     commands = fx.add_subparsers(dest="action", required=True)
@@ -148,6 +155,7 @@ def wishlist_line(item):
             f"{item['category']}; {price}; {'verified' if item['verified'] else 'unverified'}"
             + (f"; hours: {text(item['hours'])}" if item['hours'] else "")
             + (f"; {text(item['source_url'])}" if item['source_url'] else "")
+            + (f"; price source: {text(item['price_source_note'])}" if item.get("price_source_note") else "")
             + (f"; {text(item['note'])}" if item['note'] else ""))
 
 
@@ -155,7 +163,8 @@ def spend_line(item):
     original = f" (JPY {item['amount']})" if item["currency"] == "JPY" else ""
     when = "Before trip" if item["day"] is None else f"Day {item['day']}"
     category = f" [{item['category']}]" if item.get("category") else ""
-    return f"*{item['id']}* {when}{category}: SGD {item['amount_sgd']}{original}; {text(item['note'])}"
+    return (f"*{item['id']}* {when}{category}: SGD {item['amount_sgd']}{original}; {text(item['note'])}"
+            + (f"; receipt: {item['receipt']}" if item.get("receipt") else ""))
 
 
 def parse_categories(values):
@@ -269,6 +278,17 @@ def wishlist_command(args, store):
             entries.append(item)
             store.write("wishlist", entries)
             return {"item": item}, [wishlist_line(item)]
+        if args.action == "price":
+            if not args.source_note.strip():
+                raise ValueError("Price source note cannot be blank.")
+            item = next((entry for entry in entries if entry["id"] == args.id), None)
+            if item is None:
+                raise ValueError("Unknown wishlist ID.")
+            item["price_jpy"] = (None if args.price_jpy.casefold() == "unknown"
+                                 else str(money.number(args.price_jpy)))
+            item["price_source_note"] = text(args.source_note)
+            store.write("wishlist", entries)
+            return {"item": item}, [wishlist_line(item)]
         if args.action == "remove":
             if args.id in planned:
                 raise ValueError("Place is on the itinerary; remove its stops before removing the wishlist entry.")
@@ -307,6 +327,7 @@ def spend_command(args, store):
 
     with store.transaction():
         check(store.read("trip"))
+    receipt = receipts.load(args.receipt) if args.receipt else None
     conversion = money.convert(store, amount, args.currency, "SGD")
     with store.transaction():
         check(store.read("trip"))
@@ -315,13 +336,23 @@ def spend_command(args, store):
                 "amount_sgd": conversion["converted"], "note": args.note, "day": args.day, "category": category,
                 "fx": conversion["fx"], "created_at": money.timestamp().isoformat()}
         entries.append(item)
-        store.write("spend", entries)
+        saved = None
+        try:
+            if receipt:
+                saved = receipts.save(store, item["id"], receipt)
+                item["receipt"] = saved.relative_to(store.root).as_posix()
+            store.write("spend", entries)
+        except Exception:
+            if saved is not None:
+                saved.unlink(missing_ok=True)
+            raise
     return {"item": item}, [spend_line(item), *fx_lines(item["fx"])]
 
 
 def budget_command(args, store):
     with store.transaction():
         trip, entries = store.read("trip"), store.read("spend")
+        wishlist = store.read("wishlist") if args.action == "check" else []
     missing = []
     if trip["budget_sgd"] is None:
         missing.append("Budget isn't set yet; use trip set --budget-sgd AMOUNT.")
@@ -333,6 +364,8 @@ def budget_command(args, store):
     if args.day is not None:
         check_day(trip, args.day)
     total_budget = money.cents(money.number(trip["budget_sgd"]))
+    if args.action == "check":
+        return day_cost_check(args, store, trip, entries, wishlist, count, total_budget)
     total_spent = sum((Decimal(item["amount_sgd"]) for item in entries), Decimal("0.00"))
     totals = {"budget_sgd": str(total_budget), "spent_sgd": str(total_spent),
               "left_sgd": str(total_budget - total_spent)}
@@ -366,6 +399,51 @@ def budget_command(args, store):
                    f"SGD {day['budget_sgd']} budget; {day['spent_sgd']} spent; {day['left_sgd']} left")
         lines.append(f"*Day {day['day']}* {summary}" + (f" ({'; '.join(originals)})" if originals else ""))
     return {"totals": totals, "categories": categories, "days": selected}, lines
+
+
+def day_cost_check(args, store, trip, entries, wishlist, count, total_budget):
+    categories = trip.get("categories") or {}
+    allowance = (sum((Decimal(value) for name, value in categories.items() if name != "flight"),
+                     Decimal("0.00")) if categories else total_budget)
+    base, extra = divmod(int(allowance * 100), count)
+    selected = [args.day] if args.day is not None else [
+        day for day in range(1, count + 1) if trip["days"].get(str(day))]
+    places = {item["id"]: item for item in wishlist}
+    planned = {day: [places[stop] for stop in trip["days"].get(str(day), [])] for day in selected}
+    known_jpy = sum((Decimal(item["price_jpy"]) for stops in planned.values() for item in stops
+                     if item["price_jpy"] is not None), Decimal("0"))
+    # Resolve FX once so all days and ranked stops use the same rate, including offline fallback.
+    fx = money.convert(store, known_jpy, "JPY", "SGD")["fx"] if known_jpy else None
+    factor = Decimal(fx["rate"]) if fx else Decimal("0")
+    days, lines = [], []
+    for day, stops in planned.items():
+        known = [item for item in stops if item["price_jpy"] is not None]
+        unknown = [{"id": item["id"], "name": item["name"]} for item in stops if item["price_jpy"] is None]
+        estimate_jpy = sum((Decimal(item["price_jpy"]) for item in known), Decimal("0"))
+        estimate = money.cents(estimate_jpy * factor)
+        actual = sum((Decimal(item["amount_sgd"]) for item in entries if item["day"] == day), Decimal("0.00"))
+        allotted = money.cents(Decimal(base + (day <= extra)) / 100)
+        total = estimate + actual
+        difference = total - allotted
+        status = "over" if difference > 0 else "under" if difference < 0 else "at_allowance"
+        expensive = [{"id": item["id"], "name": item["name"], "area": item["area"], "city": item["city"],
+                      "price_jpy": item["price_jpy"],
+                      "estimate_sgd": str(money.cents(Decimal(item["price_jpy"]) * factor))}
+                     for item in sorted(known, key=lambda item: Decimal(item["price_jpy"]), reverse=True)[:3]]
+        days.append({"day": day, "estimate_jpy": str(estimate_jpy), "estimate_sgd": str(estimate),
+                     "actual_sgd": str(actual), "total_sgd": str(total), "allowance_sgd": str(allotted),
+                     "difference_sgd": str(difference), "status": status, "over_budget": difference > 0,
+                     "unknown_count": len(unknown), "unknown_stops": unknown, "complete": not unknown,
+                     "most_expensive_stops": expensive})
+        flag = f"{status.upper()} by SGD {abs(difference)}" if difference else "AT ALLOWANCE"
+        lines.append(f"*Day {day}* {flag}; SGD {estimate} estimated + {actual} actual = {total}; "
+                     f"allowance {allotted}; {len(unknown)} unknown price(s)"
+                     + ("; minimum known cost only" if unknown else ""))
+        if expensive:
+            lines.append("*Most expensive* " + "; ".join(
+                f"{item['id']} {text(item['name'])}, {text(item['area'])}: SGD {item['estimate_sgd']} estimated"
+                for item in expensive))
+    return {"days": days, "fx": fx}, [*(lines or ["*Check* No planned days."]), *fx_lines(fx)]
 
 
 def dispatch(args):

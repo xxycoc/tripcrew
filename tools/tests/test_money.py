@@ -149,3 +149,127 @@ def test_budget_categories_track_spend_and_warn_at_80_percent(call, monkeypatch,
     assert result["totals"]["spent_sgd"] == "662.52"
     assert result["days"][0]["spent_sgd"] == "42.52"
     assert call("spend", "list")["spend"][0]["day"] is None
+
+
+def estimated_stop(call, name, price=None, day=1):
+    args = ["wishlist", "add", "--name", name, "--area", "Station", "--city", "Osaka", "--category", "food"]
+    if price is not None:
+        args += ["--price-jpy", str(price)]
+    stop = call(*args)["item"]["id"]
+    if day is not None:
+        call("trip", "day", str(day), "add", stop)
+    return stop
+
+
+def test_day_check_negotiation_categories_unknowns_and_historical_spend(call, monkeypatch, demo_trip):
+    monkeypatch.setattr(money, "timestamp", lambda: NOW)
+    store = Store()
+    cached(store)
+    call("trip", "set", "--budget-sgd", "1500", "--categories", "flight=700", "other=800")
+    pricey = estimated_stop(call, "Lunch", 5000)
+    cheap = estimated_stop(call, "Nearby lunch", 1000, day=None)
+    free = estimated_stop(call, "Park", 0)
+    unknown = estimated_stop(call, "Market")
+    estimated_stop(call, "Tomorrow", 100, day=2)
+    estimated_stop(call, "Unplanned expensive", 999999, day=None)
+    call("spend", "add", "1000", "JPY", "--note", "Train", "--day", "1", "--category", "other")
+    call("spend", "add", "620", "SGD", "--note", "Flight", "--category", "flight")
+    cached_value = cached(store)
+    cached_value["rate"] = "0.03"
+    store.write("fx", cached_value)
+    before = {name: store.read(name) for name in ("trip", "wishlist", "spend")}
+    result = call("budget", "check")
+    assert [day["day"] for day in result["days"]] == [1, 2]
+    day = result["days"][0]
+    assert day["estimate_jpy"] == "5000" and day["estimate_sgd"] == "150.00"
+    assert day["actual_sgd"] == "28.35" and day["total_sgd"] == "178.35"
+    assert day["allowance_sgd"] == "114.29" and day["difference_sgd"] == "64.06"
+    assert day["status"] == "over" and day["over_budget"] is True
+    assert day["unknown_count"] == 1 and day["complete"] is False
+    assert day["unknown_stops"] == [{"id": unknown, "name": "Market"}]
+    assert [item["id"] for item in day["most_expensive_stops"]] == [pricey, free]
+    assert {name: store.read(name) for name in before} == before
+    call("trip", "day", "1", "remove", pricey)
+    call("trip", "day", "1", "add", cheap)
+    checked = call("budget", "check", "--day", "1")["days"]
+    assert len(checked) == 1
+    assert checked[0]["status"] == "under" and checked[0]["over_budget"] is False
+    assert checked[0]["difference_sgd"] == "-55.94"
+
+
+def test_day_check_no_categories_rounding_ranking_and_explicit_empty_day(call, monkeypatch, demo_trip):
+    monkeypatch.setattr(money, "timestamp", lambda: NOW)
+    cached(Store())
+    call("trip", "set", "--budget-sgd", "0.03")
+    assert call("budget", "check")["days"] == []
+    assert [call("budget", "check", "--day", str(day))["days"][0]["allowance_sgd"]
+            for day in range(1, 8)] == ["0.01"] * 3 + ["0.00"] * 4
+    ids = [estimated_stop(call, str(price), price) for price in (20, 40, 10, 30)]
+    day = call("budget", "check", "--day", "1")["days"][0]
+    assert day["estimate_sgd"] == "2.83" and day["difference_sgd"] == "2.82"
+    assert [item["id"] for item in day["most_expensive_stops"]] == [ids[1], ids[3], ids[0]]
+    assert day["complete"] is True
+    for invalid in ("0", "8"):
+        assert "between 1 and 7" in call("budget", "check", "--day", invalid, ok=False)["reason"]
+
+
+def test_day_check_free_unknown_and_zero_allowance_need_no_fx(call, demo_trip):
+    call("trip", "set", "--budget-sgd", "0")
+    estimated_stop(call, "Free", 0)
+    estimated_stop(call, "Unknown")
+    result = call("budget", "check")
+    day = result["days"][0]
+    assert day["status"] == "at_allowance" and day["over_budget"] is False
+    assert day["unknown_count"] == 1 and day["complete"] is False
+    assert day["estimate_sgd"] == "0.00" and result["fx"] is None
+    call("trip", "set", "--budget-sgd", "100", "--categories", "flight=100")
+    call("spend", "add", "1", "SGD", "--note", "Day flight", "--day", "1", "--category", "flight")
+    day = call("budget", "check")["days"][0]
+    assert day["allowance_sgd"] == "0.00" and day["actual_sgd"] == "1.00"
+    assert day["status"] == "over"
+
+
+def test_day_check_rounds_day_sum_once(call, monkeypatch, demo_trip):
+    monkeypatch.setattr(money, "timestamp", lambda: NOW)
+    store = Store()
+    rate = cached(store)
+    rate["rate"] = "0.005"
+    store.write("fx", rate)
+    estimated_stop(call, "First", 1)
+    estimated_stop(call, "Second", 1)
+    assert call("budget", "check")["days"][0]["estimate_sgd"] == "0.01"
+
+
+@pytest.mark.parametrize("source", ["live", "cache", "stale_cache", "unavailable"])
+def test_day_check_fx_sources_and_failure(call, monkeypatch, demo_trip, source, capsys):
+    from tripcrew.cli import main
+
+    monkeypatch.setattr(money, "timestamp", lambda: NOW)
+    estimated_stop(call, "Lunch", 1500)
+    estimated_stop(call, "Train", 500)
+    estimated_stop(call, "Tomorrow", 500, day=2)
+    if source in ("cache", "stale_cache"):
+        cached(Store(), 86400 if source == "stale_cache" else 0)
+    requests = []
+
+    def fetch(*a, **k):
+        requests.append(a)
+        if source == "live":
+            return BytesIO(b'{"base":"JPY","date":"2026-11-04","rates":{"SGD":0.03}}')
+        raise OSError("offline")
+
+    monkeypatch.setattr(money, "urlopen", fetch)
+    if source == "unavailable":
+        assert "no cached rate" in call("budget", "check", ok=False)["reason"]
+        return
+    result = call("budget", "check")
+    assert result["fx"]["source"] == source
+    assert len(requests) == (0 if source == "cache" else 1)
+    if source == "stale_cache":
+        assert "24.0 hours ago" in result["fx"]["warning"]
+    assert main(["budget", "check"]) == 0
+    output = capsys.readouterr().out
+    assert all(line.startswith("*") for line in output.splitlines())
+    assert "UNDER by SGD" in output and "*Most expensive*" in output
+    if source == "stale_cache":
+        assert "Offline: using cached FX" in output
