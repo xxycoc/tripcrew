@@ -106,3 +106,11 @@ godot --headless --path game --script res://tests/test_game.gd
 ## Built with
 
 I built this for the WeMakeDevs Flip the Switch Hackathon. I dictated the agent instructions, this README and most of my messages with Wispr Flow. The pixel art is from [Kenney](https://kenney.nl) and is free to use ([credits](game/CREDITS.md)).
+
+The code was written with Claude Code and Codex.
+
+## Notes
+
+- Reel Adder reads a reel's caption and audio only to identify the place, for personal trip planning. Nothing is downloaded for keeping or reposted; audio is transcribed from a temporary file that is deleted.
+- TikTok is fully supported. Instagram is best effort: some reels need a login, and then Reel Adder asks you instead.
+- The live view only shows real events. It never invents activity.
