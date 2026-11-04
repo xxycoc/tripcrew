@@ -4,7 +4,7 @@ import json
 from urllib.request import urlopen
 
 
-FX_URL = "https://api.frankfurter.dev/v1/latest?base=JPY&symbols=MYR"
+FX_URL = "https://api.frankfurter.dev/v1/latest?base=JPY&symbols=SGD"
 TTL = 12 * 60 * 60
 
 
@@ -35,7 +35,7 @@ def rate(store):
                 fetched = datetime.fromisoformat(cached["fetched_at"])
                 age = (timestamp() - fetched).total_seconds()
                 number(cached["rate"], positive=True)
-                if cached["base"] != "JPY" or cached["quote"] != "MYR" or age < 0:
+                if cached["base"] != "JPY" or cached["quote"] != "SGD" or age < 0:
                     raise ValueError("invalid cache")
             except (KeyError, ValueError, TypeError) as exc:
                 raise ValueError("Invalid fx.json cache; repair or remove it before converting.") from exc
@@ -46,9 +46,9 @@ def rate(store):
                 data = json.load(response)
             if data["base"] != "JPY":
                 raise ValueError("Unexpected FX base")
-            value = number(data["rates"]["MYR"], positive=True)
+            value = number(data["rates"]["SGD"], positive=True)
             datetime.strptime(data["date"], "%Y-%m-%d")
-            fresh = {"base": "JPY", "quote": "MYR", "rate": str(value),
+            fresh = {"base": "JPY", "quote": "SGD", "rate": str(value),
                      "date": data["date"], "fetched_at": timestamp().isoformat()}
         except (OSError, ValueError, KeyError, TypeError) as exc:
             if not cached:
@@ -62,8 +62,8 @@ def rate(store):
 def convert(store, amount, source, target):
     amount = number(amount)
     source, target = source.upper(), target.upper()
-    if source not in {"JPY", "MYR"} or target not in {"JPY", "MYR"}:
-        raise ValueError("Supported currencies: JPY and MYR.")
+    if source not in {"JPY", "SGD"} or target not in {"JPY", "SGD"}:
+        raise ValueError("Supported currencies: JPY and SGD.")
     fx = None
     result = amount
     if source != target:

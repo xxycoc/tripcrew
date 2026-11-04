@@ -2,7 +2,7 @@
 
 Run from `agents/planner/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh uses `../../bin/tripcrew`. The examples below show both forms. `--help` is available on each command. `--json` may be appended for machine output.
 
-`trip show` human output omits prices; its JSON includes `budget_myr`. `wishlist list` includes stored price metadata in both output formats. Dates are inclusive. Days and positions start at 1. Wishlist IDs come from `wishlist list`; `w_0123456789ab` below stands for an existing returned ID.
+`trip show` human output omits prices; its JSON includes `budget_sgd`. `wishlist list` includes stored price metadata in both output formats. Dates are inclusive. Days and positions start at 1. Wishlist IDs come from `wishlist list`; `w_0123456789ab` below stands for an existing returned ID.
 
 | Command | Accepted arguments in this reference | Effect |
 | --- | --- | --- |

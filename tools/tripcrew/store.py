@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULTS = {
     "trip": {
         "start": None, "end": None,
-        "cities": [], "budget_myr": None,
+        "cities": [], "budget_sgd": None,
         "interests": [], "days": {},
     },
     "wishlist": [],

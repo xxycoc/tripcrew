@@ -5,7 +5,7 @@ Switch Console starts each provider in its own folder. Replace `<owner>` with th
 | Agent | Folder | Provider | Suggested Switch name | Alias | Tool reference |
 | --- | --- | --- | --- | --- | --- |
 | Planner | `agents/planner` | Claude Code | `claude-code.tripcrew-planner.<owner>` | `planner` | [TOOLS.md](../agents/planner/TOOLS.md): trip settings excluding budget, ordered itinerary stops, wishlist reads. |
-| Budget | `agents/budget` | Codex | `codex.tripcrew-budget.<owner>` | `budget` | [TOOLS.md](../agents/budget/TOOLS.md): budget-only setting, prices, expense recording, budget status and JPY/MYR FX; trip/wishlist reads. |
+| Budget | `agents/budget` | Codex | `codex.tripcrew-budget.<owner>` | `budget` | [TOOLS.md](../agents/budget/TOOLS.md): budget-only setting, prices, expense recording, budget status and JPY/SGD FX; trip/wishlist reads. |
 | Reel Adder | `agents/reel-adder` | Claude Code | `claude-code.tripcrew-reel-adder.<owner>` | `reel` | [TOOLS.md](../agents/reel-adder/TOOLS.md): extraction, source verification, wishlist addition and relay outcome events; trip/wishlist reads. |
 
 For **each** Console agent choose:
@@ -21,7 +21,7 @@ The two `CLAUDE.md` files and Budget's `AGENTS.md` contain only `<!-- Dictated i
 
 Each Claude folder contains `.claude/settings.json`. It allows only its listed launcher subcommands plus `WebSearch` and `WebFetch`. sh uses `Bash(../../bin/tripcrew ...)`; Windows uses `PowerShell(..\\..\\bin\\tripcrew.cmd ...)` in JSON, which decodes to single path separators. The `.cmd` launcher belongs in PowerShell, not as an unescaped Bash command.
 
-Planner's `trip set` permission has an explicit deny for `--b*`, covering every argparse abbreviation of `--budget-myr`, including `--b`. No bare `Bash`, `PowerShell`, interpreter, shell wrapper, `uv`, or launcher-wide wildcard is granted. JSON flags follow the subcommand to match the narrow prefixes.
+Planner's `trip set` permission has an explicit deny for `--b*`, covering every argparse abbreviation of `--budget-sgd`, including `--b`. No bare `Bash`, `PowerShell`, interpreter, shell wrapper, `uv`, or launcher-wide wildcard is granted. JSON flags follow the subcommand to match the narrow prefixes.
 
 These rules add pre-approvals; they are not an exclusive command sandbox. Auto mode can review other operations, and existing user/local/managed rules also apply. The installed `claude doctor` recognized both files but reported the workspace untrusted, ignoring Planner's 16 and Reel Adder's 22 allow entries. The owner must start Claude Code interactively and accept its workspace trust dialog before these grants activate. Confirm the setting sources and effective permissions with `/status` and `/permissions` in that session. The files do not select a bypass mode.
 

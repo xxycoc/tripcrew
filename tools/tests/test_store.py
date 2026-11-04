@@ -89,4 +89,4 @@ def test_defaults_are_independent(tmp_path):
     first["interests"].append("food")
     first["days"]["1"] = ["w_example"]
     assert store.read("trip") == {
-        "start": None, "end": None, "cities": [], "budget_myr": None, "interests": [], "days": {}}
+        "start": None, "end": None, "cities": [], "budget_sgd": None, "interests": [], "days": {}}

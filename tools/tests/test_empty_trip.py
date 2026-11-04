@@ -8,7 +8,7 @@ from tripcrew.cli import main
 from tripcrew.store import ROOT, Store
 
 
-EMPTY_TRIP = {"start": None, "end": None, "cities": [], "budget_myr": None,
+EMPTY_TRIP = {"start": None, "end": None, "cities": [], "budget_sgd": None,
               "interests": [], "days": {}}
 
 
@@ -18,7 +18,7 @@ def test_fresh_trip_show_is_empty_and_explains_setup(call, capsys):
     output = capsys.readouterr().out
     assert "No trip is set yet" in output
     assert "trip set" in output
-    for flag in ("--start", "--end", "--cities", "--budget-myr", "--interests"):
+    for flag in ("--start", "--end", "--cities", "--budget-sgd", "--interests"):
         assert flag in output
     assert "*Day" not in output
     assert "None" not in output
@@ -27,10 +27,10 @@ def test_fresh_trip_show_is_empty_and_explains_setup(call, capsys):
 
 @pytest.mark.parametrize("settings,missing", [
     ([], ["Budget isn't set yet", "Trip dates aren't set yet"]),
-    (["--budget-myr", "6000"], ["Trip dates aren't set yet"]),
+    (["--budget-sgd", "6000"], ["Trip dates aren't set yet"]),
     (["--start", "2026-12-10", "--end", "2026-12-16"], ["Budget isn't set yet"]),
-    (["--budget-myr", "0", "--start", "2026-12-10"], ["Trip dates aren't set yet"]),
-    (["--budget-myr", "0", "--end", "2026-12-16"], ["Trip dates aren't set yet"]),
+    (["--budget-sgd", "0", "--start", "2026-12-10"], ["Trip dates aren't set yet"]),
+    (["--budget-sgd", "0", "--end", "2026-12-16"], ["Trip dates aren't set yet"]),
 ])
 @pytest.mark.parametrize("day", [[], ["--day", "1"]])
 def test_budget_requires_budget_and_dates(call, capsys, settings, missing, day):
@@ -65,7 +65,7 @@ def test_itinerary_requires_both_dates_without_changing_state(call, capsys, sett
     assert Store().read("trip") == before
 
 
-@pytest.mark.parametrize("currency", ["JPY", "MYR"])
+@pytest.mark.parametrize("currency", ["JPY", "SGD"])
 def test_spending_requires_dates_before_conversion(call, currency):
     result = call("spend", "add", "100", currency, "--note", "lunch", "--day", "1", ok=False)
     assert "Trip dates aren't set yet" in result["reason"]
@@ -75,10 +75,10 @@ def test_spending_requires_dates_before_conversion(call, currency):
 
 @pytest.mark.parametrize("first_date,second_date", [("start", "end"), ("end", "start")])
 def test_trip_can_be_configured_incrementally(call, capsys, first_date, second_date):
-    trip = call("trip", "set", "--budget-myr", "0")["trip"]
-    assert trip == {**EMPTY_TRIP, "budget_myr": "0.00"}
+    trip = call("trip", "set", "--budget-sgd", "0")["trip"]
+    assert trip == {**EMPTY_TRIP, "budget_sgd": "0.00"}
     trip = call("trip", "set", "--cities", "Tokyo", "--interests", "food")["trip"]
-    assert trip == {**EMPTY_TRIP, "budget_myr": "0.00", "cities": ["Tokyo"], "interests": ["food"]}
+    assert trip == {**EMPTY_TRIP, "budget_sgd": "0.00", "cities": ["Tokyo"], "interests": ["food"]}
     dates = {"start": "2026-12-10", "end": "2026-12-11"}
     trip = call("trip", "set", f"--{first_date}", dates[first_date])["trip"]
     assert trip[first_date] == dates[first_date] and trip[second_date] is None
@@ -86,17 +86,17 @@ def test_trip_can_be_configured_incrementally(call, capsys, first_date, second_d
     output = capsys.readouterr().out
     assert "not set" in output and "None" not in output and "*Day" not in output
     trip = call("trip", "set", f"--{second_date}", dates[second_date])["trip"]
-    assert trip == {**EMPTY_TRIP, **dates, "budget_myr": "0.00", "cities": ["Tokyo"], "interests": ["food"]}
+    assert trip == {**EMPTY_TRIP, **dates, "budget_sgd": "0.00", "cities": ["Tokyo"], "interests": ["food"]}
     result = call("budget", "status")
-    assert result["totals"] == {"budget_myr": "0.00", "spent_myr": "0.00", "left_myr": "0.00"}
+    assert result["totals"] == {"budget_sgd": "0.00", "spent_sgd": "0.00", "left_sgd": "0.00"}
     assert len(result["days"]) == 2
-    assert [day["budget_myr"] for day in result["days"]] == ["0.00", "0.00"]
+    assert [day["budget_sgd"] for day in result["days"]] == ["0.00", "0.00"]
 
 
 @pytest.mark.parametrize("settings", [
     ["--start", "nonsense"], ["--end", "2026-02-30"],
     ["--start", "2026-12-11", "--end", "2026-12-10"],
-    ["--budget-myr", "1.001"], ["--budget-myr", "-1"], ["--cities", " "],
+    ["--budget-sgd", "1.001"], ["--budget-sgd", "-1"], ["--cities", " "],
 ])
 def test_invalid_initial_settings_leave_trip_empty(call, settings):
     call("trip", "set", *settings, ok=False)
@@ -111,7 +111,7 @@ def test_wishlist_and_fx_work_before_trip_setup(call):
     assert call("wishlist", "list", "--unplanned")["wishlist"] == [item]
     call("wishlist", "remove", item["id"])
     assert call("wishlist", "list")["wishlist"] == []
-    assert call("fx", "convert", "10", "MYR", "MYR")["converted"] == "10.00"
+    assert call("fx", "convert", "10", "SGD", "SGD")["converted"] == "10.00"
     assert Store().read("trip") == EMPTY_TRIP
 
 
