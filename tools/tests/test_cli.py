@@ -16,7 +16,7 @@ def place(call, name="Ramen", city="Osaka", category="food"):
                 "--url", "https://example.test/place", "--verified", "--note", "Check opening day")["item"]["id"]
 
 
-def test_itinerary_lifecycle_and_wishlist_filters(call):
+def test_itinerary_lifecycle_and_wishlist_filters(call, demo_trip):
     first, second = place(call), place(call, "Temple", "Kyoto", "attraction")
     call("trip", "day", "1", "add", first)
     call("trip", "day", "1", "add", second, "--position", "1")
@@ -36,7 +36,7 @@ def test_itinerary_lifecycle_and_wishlist_filters(call):
     assert len(call("wishlist", "list")["wishlist"]) == 1
 
 
-def test_invalid_moves_leave_state_unchanged(call):
+def test_invalid_moves_leave_state_unchanged(call, demo_trip):
     stop = place(call)
     call("trip", "day", "1", "add", stop)
     before = Store().read("trip")
@@ -49,7 +49,7 @@ def test_invalid_moves_leave_state_unchanged(call):
         assert Store().read("trip") == before
 
 
-def test_trip_set_preserves_stops_and_validates_dates(call):
+def test_trip_set_preserves_stops_and_validates_dates(call, demo_trip):
     stop = place(call)
     call("trip", "day", "7", "add", stop)
     call("trip", "set", "--cities", "Osaka", "Kyoto", "--interests", "food", "culture", "--budget-myr", "6500")
@@ -63,7 +63,7 @@ def test_trip_set_preserves_stops_and_validates_dates(call):
         assert Store().read("trip") == changed
 
 
-def test_dates_cannot_exclude_spending(call):
+def test_dates_cannot_exclude_spending(call, demo_trip):
     call("spend", "add", "100", "MYR", "--note", "hotel", "--day", "7")
     call("trip", "set", "--end", "2026-12-15", ok=False)
     assert call("spend", "list")["spend"][0]["day"] == 7
@@ -81,11 +81,11 @@ def test_wishlist_unknown_price_and_unverified(call):
                                  ("budget", "status", "--day", "8"),
                                  ("trip", "set"), ("wishlist", "remove", "unknown"),
                                  ("reel", "failed", "--reason", " "), ("no-such-command",)])
-def test_validation_json(call, args):
+def test_validation_json(call, demo_trip, args):
     call(*args, ok=False)
 
 
-def test_human_lines_have_telegram_labels_no_tables_or_newline_injection(call, capsys):
+def test_human_lines_have_telegram_labels_no_tables_or_newline_injection(call, capsys, demo_trip):
     stop = place(call, name="Noodle\nshop")
     call("trip", "day", "1", "add", stop)
     for args in (["trip", "show"], ["wishlist", "list"], ["budget", "status"]):
@@ -98,7 +98,7 @@ def test_human_lines_have_telegram_labels_no_tables_or_newline_injection(call, c
     assert "1500" not in capsys.readouterr().out
 
 
-def test_real_module_entry_point(tmp_path):
+def test_real_module_entry_point(tmp_path, demo_trip):
     result = subprocess.run([sys.executable, "-m", "tripcrew", "trip", "show", "--json"],
                             cwd=ROOT / "tools", capture_output=True, text=True, encoding="utf-8", timeout=20)
     assert result.returncode == 0, result.stderr
@@ -113,3 +113,5 @@ def test_launcher_from_unrelated_directory(tmp_path):
     result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["ok"] is True
+    assert json.loads(result.stdout)["trip"] == {
+        "start": None, "end": None, "cities": [], "budget_myr": None, "interests": [], "days": {}}

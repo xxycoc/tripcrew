@@ -14,6 +14,14 @@ Run from `agents/budget/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh 
 
 ## Windows examples
 
+A fresh state has no budget or dates. Set the budget from the person's request;
+the MYR 6,000 below is an example, not a default. Budget can be set before Planner
+sets dates. The spending and daily-status examples require Planner to have
+explicitly set dates covering day 2, such as 10–16 December 2026. `budget status`
+requires a budget and both dates; `spend add` requires both dates. Missing settings
+produce a clear error, or `ok: false` and a `reason` with `--json`, without assumed
+amounts. Zero is a valid budget.
+
 ```powershell
 ..\..\bin\tripcrew.cmd trip show --json
 ..\..\bin\tripcrew.cmd trip set --budget-myr 6000.00

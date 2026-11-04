@@ -27,3 +27,9 @@ def call(capsys):
         return data
 
     return run
+
+
+@pytest.fixture
+def demo_trip(call):
+    return call("trip", "set", "--start", "2026-12-10", "--end", "2026-12-16",
+                "--cities", "Osaka", "Kyoto", "--budget-myr", "6000")["trip"]

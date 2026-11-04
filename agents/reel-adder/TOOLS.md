@@ -13,6 +13,11 @@ Run from `agents/reel-adder/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`;
 
 ## Windows examples
 
+A fresh state has no trip cities or dates. `trip show` reports this and gives
+setup flags; ask the person for missing trip context and let Planner set it.
+Wishlist and reel commands work before trip setup. Kyoto below is an explicit
+example filter and place city, not a default destination.
+
 The fetch URL is an upstream yt-dlp TikTok test example, independent of the shrine example below; its current availability was not tested. The commands illustrate separate operations.
 
 ```powershell

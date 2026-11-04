@@ -97,7 +97,7 @@ def test_same_currency_requires_no_rate(tmp_path):
     assert money.convert(Store(tmp_path), "15.25", "MYR", "MYR")["converted"] == "15.25"
 
 
-def test_budget_math_and_historical_fx(call, monkeypatch):
+def test_budget_math_and_historical_fx(call, monkeypatch, demo_trip):
     monkeypatch.setattr(money, "timestamp", lambda: NOW)
     store = Store()
     cached(store)
@@ -123,7 +123,7 @@ def test_budget_math_and_historical_fx(call, monkeypatch):
     assert filtered["totals"] == result["totals"]
 
 
-def test_overspend_is_negative_and_tiny_budget_allocates_exactly(call):
+def test_overspend_is_negative_and_tiny_budget_allocates_exactly(call, demo_trip):
     call("trip", "set", "--budget-myr", "0.03")
     call("spend", "add", "0.05", "MYR", "--note", "overspent", "--day", "1")
     result = call("budget", "status")

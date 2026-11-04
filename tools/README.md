@@ -49,7 +49,20 @@ Days and positions start at 1. A move's position is the final position after
 removal; omit it to append. Stops contain wishlist IDs in order. A wishlist entry
 cannot be removed while it is on the itinerary. Changes to dates cannot exclude
 planned stops or existing expenses. Omitted settings are preserved. Dates are
-inclusive, with the demo default of 10–16 December 2026, Osaka/Kyoto, MYR 6,000.
+inclusive. A fresh state has no trip: dates and budget are `null`, cities and
+interests are empty lists, and days are an empty object. No destination, dates or
+budget are assumed. Planner sets the dates, cities and interests from the
+person's Telegram messages; Budget sets the requested budget. The Osaka/Kyoto
+values above are examples to supply explicitly, not defaults.
+
+`trip show` explains that no trip is set yet and lists the `trip set` flags.
+Settings can be supplied together or incrementally, including one date at a
+time. Both dates are required before `trip day` or `spend add` can proceed.
+`budget status`, including `--day`, requires both dates and a budget and explains
+which settings are missing instead of calculating assumed amounts. A zero
+budget is valid. Blocked actions exit 1; `--json` returns `ok: false` with a
+`reason`. Reading an empty or partially configured trip succeeds with `ok: true`
+and the current fields. Wishlist, reel and FX commands do not require a trip.
 
 `wishlist add` leaves price unknown when `--price-jpy` is omitted; zero means
 free. Entries start unverified unless the agent explicitly supplies `--verified`.
@@ -65,6 +78,8 @@ Missing JSON files use defaults until their first mutation. The four files are:
 - `wishlist.json`: place objects with stable `w_` IDs.
 - `spend.json`: expense objects with stable `s_` IDs and original currency.
 - `fx.json`: the last successfully fetched JPY-to-MYR rate and its timestamps.
+
+Existing saved trips are preserved; changing the defaults does not clear them.
 
 One `filelock` lock covers complete read/modify/write operations, including
 wishlist reference checks. Writes use a flushed and fsynced temporary file in

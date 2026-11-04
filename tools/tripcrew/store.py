@@ -13,8 +13,8 @@ from filelock import FileLock
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULTS = {
     "trip": {
-        "start": "2026-12-10", "end": "2026-12-16",
-        "cities": ["Osaka", "Kyoto"], "budget_myr": "6000.00",
+        "start": None, "end": None,
+        "cities": [], "budget_myr": None,
         "interests": [], "days": {},
     },
     "wishlist": [],

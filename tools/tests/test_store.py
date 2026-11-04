@@ -86,4 +86,7 @@ def test_defaults_are_independent(tmp_path):
     store = Store(tmp_path)
     first = store.read("trip")
     first["cities"].append("Tokyo")
-    assert store.read("trip")["cities"] == ["Osaka", "Kyoto"]
+    first["interests"].append("food")
+    first["days"]["1"] = ["w_example"]
+    assert store.read("trip") == {
+        "start": None, "end": None, "cities": [], "budget_myr": None, "interests": [], "days": {}}

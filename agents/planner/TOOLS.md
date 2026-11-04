@@ -15,6 +15,11 @@ Run from `agents/planner/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh
 
 ## Windows examples
 
+A fresh state has no trip. Use the person's Telegram messages to set dates,
+cities and interests; the values below are examples, not defaults. `trip show`
+explains setup when empty and supports partial settings. Both dates must be set
+before editing itinerary days. Budget sets the budget separately.
+
 ```powershell
 ..\..\bin\tripcrew.cmd trip show
 ..\..\bin\tripcrew.cmd trip set --start 2026-12-10 --end 2026-12-16 --cities Osaka Kyoto --interests food temples

@@ -9,6 +9,11 @@ from . import money, reels
 from .store import Store
 
 
+DATES_REQUIRED = "Trip dates aren't set yet; use trip set --start YYYY-MM-DD --end YYYY-MM-DD."
+TRIP_SETUP = ("Use trip set --start YYYY-MM-DD --end YYYY-MM-DD --cities CITY [CITY ...] "
+              "--budget-myr AMOUNT --interests INTEREST [INTEREST ...].")
+
+
 class Parser(argparse.ArgumentParser):
     def error(self, message):
         raise ValueError(message)
@@ -102,6 +107,8 @@ def text(value):
 
 
 def day_count(trip):
+    if not trip["start"] or not trip["end"]:
+        raise ValueError(DATES_REQUIRED)
     count = (date.fromisoformat(trip["end"]) - date.fromisoformat(trip["start"])).days + 1
     if count <= 0:
         raise ValueError("Trip end must be on or after its start.")
@@ -109,8 +116,9 @@ def day_count(trip):
 
 
 def check_day(trip, day):
-    if not 1 <= day <= day_count(trip):
-        raise ValueError(f"Day must be between 1 and {day_count(trip)}.")
+    count = day_count(trip)
+    if not 1 <= day <= count:
+        raise ValueError(f"Day must be between 1 and {count}.")
 
 
 def new_id(prefix, entries):
@@ -155,15 +163,18 @@ def trip_command(args, store):
             for key in ("start", "end", "cities", "interests"):
                 value = getattr(args, key)
                 if value is not None:
+                    if key in ("start", "end"):
+                        date.fromisoformat(value)
                     if isinstance(value, list) and any(not part.strip() for part in value):
                         raise ValueError(f"{key} cannot contain empty values.")
                     trip[key] = value
-            count = day_count(trip)
-            if any(int(day) > count and stops for day, stops in trip["days"].items()):
-                raise ValueError("New dates would discard planned days; remove or move those stops first.")
-            if any(item["day"] > count for item in store.read("spend")):
-                raise ValueError("New dates would exclude recorded spending; keep those days in the trip.")
-            trip["days"] = {day: stops for day, stops in trip["days"].items() if int(day) <= count}
+            if trip["start"] and trip["end"]:
+                count = day_count(trip)
+                if any(int(day) > count and stops for day, stops in trip["days"].items()):
+                    raise ValueError("New dates would discard planned days; remove or move those stops first.")
+                if any(item["day"] > count for item in store.read("spend")):
+                    raise ValueError("New dates would exclude recorded spending; keep those days in the trip.")
+                trip["days"] = {day: stops for day, stops in trip["days"].items() if int(day) <= count}
             if args.budget_myr is not None:
                 amount = money.number(args.budget_myr)
                 if money.cents(amount) != amount:
@@ -196,8 +207,13 @@ def trip_command(args, store):
                 target.insert(position - 1, args.id)
             store.write("trip", trip)
     names = {item["id"]: item["name"] for item in wishlist}
-    lines = [f"*Trip* {trip['start']} to {trip['end']}; {', '.join(map(text, trip['cities']))}",
+    if not any(trip[key] for key in ("start", "end", "cities", "interests", "days")) and trip["budget_myr"] is None:
+        return {"trip": trip}, ["*Trip* No trip is set yet.", f"*Setup* {TRIP_SETUP}"]
+    dates = f"{trip['start'] or 'not set'} to {trip['end'] or 'not set'}"
+    lines = [f"*Trip* {dates}; {', '.join(map(text, trip['cities'])) or 'cities not set'}",
              f"*Interests* {', '.join(map(text, trip['interests'])) or 'not set'}"]
+    if not trip["start"] or not trip["end"]:
+        return {"trip": trip}, [*lines, f"*Setup* {DATES_REQUIRED}"]
     for day in range(1, day_count(trip) + 1):
         stops = trip["days"].get(str(day), [])
         lines.append(f"*Day {day}* " + (" → ".join(f"{stop} {text(names.get(stop, '(missing wishlist entry)'))}"
@@ -262,6 +278,13 @@ def spend_command(args, store):
 def budget_command(args, store):
     with store.transaction():
         trip, entries = store.read("trip"), store.read("spend")
+    missing = []
+    if trip["budget_myr"] is None:
+        missing.append("Budget isn't set yet; use trip set --budget-myr AMOUNT.")
+    if not trip["start"] or not trip["end"]:
+        missing.append(DATES_REQUIRED)
+    if missing:
+        raise ValueError(" ".join(missing))
     count = day_count(trip)
     if args.day is not None:
         check_day(trip, args.day)
