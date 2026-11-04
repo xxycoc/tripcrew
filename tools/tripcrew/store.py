@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+import time
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
@@ -55,6 +56,15 @@ class Store:
                 stream.write("\n")
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.replace(temporary, self.root / f"{name}.json")
+            # Windows refuses the replace while another process (often a virus
+            # scanner reading the last write) has the target open; it clears quickly.
+            for attempt in range(50):
+                try:
+                    os.replace(temporary, self.root / f"{name}.json")
+                    break
+                except PermissionError:
+                    if attempt == 49:
+                        raise
+                    time.sleep(0.02)
         finally:
             Path(temporary).unlink(missing_ok=True)
