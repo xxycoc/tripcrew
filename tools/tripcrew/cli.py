@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 import json
 import sys
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from . import money, reels
@@ -12,6 +13,7 @@ from .store import Store
 DATES_REQUIRED = "Trip dates aren't set yet; use trip set --start YYYY-MM-DD --end YYYY-MM-DD."
 TRIP_SETUP = ("Use trip set --start YYYY-MM-DD --end YYYY-MM-DD --cities CITY [CITY ...] "
               "--budget-sgd AMOUNT --interests INTEREST [INTEREST ...].")
+MAP_WAYPOINT_LIMIT = 3  # URLs API limit for mobile browsers, excluding the two endpoints.
 
 
 class Parser(argparse.ArgumentParser):
@@ -28,6 +30,8 @@ def parser():
     trip = groups.add_parser("trip", help="Read trip settings or edit itinerary.")
     commands = trip.add_subparsers(dest="action", required=True)
     commands.add_parser("show", help="Read settings and ordered stops, without prices.")
+    mapping = commands.add_parser("map", help="Read Google Maps links for one day or every planned day.")
+    mapping.add_argument("day", nargs="?", type=int, help="Trip day, starting at 1; omit for all planned days.")
     setting = commands.add_parser("set", help="Change only supplied settings; preserve itinerary.")
     setting.add_argument("--start", help="First date, YYYY-MM-DD (inclusive).")
     setting.add_argument("--end", help="Last date, YYYY-MM-DD (inclusive).")
@@ -174,10 +178,52 @@ def parse_categories(values):
     return categories
 
 
+def map_days(trip, wishlist, day):
+    count = day_count(trip)
+    if day is not None:
+        check_day(trip, day)
+    days = [day] if day is not None else [n for n in range(1, count + 1) if trip["days"].get(str(n))]
+    places = {item["id"]: item for item in wishlist}
+    results, lines = [], []
+    for number in days:
+        stops = []
+        for stop in trip["days"].get(str(number), []):
+            if stop not in places:
+                raise ValueError(f"Day {number} references missing wishlist ID {stop}; fix the itinerary first.")
+            stops.append({key: places[stop][key] for key in ("id", "name", "area", "city")})
+        used, dropped = stops[:MAP_WAYPOINT_LIMIT + 2], stops[MAP_WAYPOINT_LIMIT + 2:]
+        result = {"day": number, "url": None, "stops": used, "dropped_stops": dropped}
+        if not used:
+            result["message"] = "Unplanned; no stops to map."
+            lines.append(f"*Day {number}* {result['message']}")
+        else:
+            queries = [", ".join(text(stop[key]) for key in ("name", "area", "city")) for stop in used]
+            if len(queries) == 1:
+                action, params = "search", {"api": 1, "query": queries[0]}
+            else:
+                action, params = "dir", {"api": 1, "origin": queries[0], "destination": queries[-1]}
+                if len(queries) > 2:
+                    params["waypoints"] = "|".join(queries[1:-1])
+                params["travelmode"] = "transit"
+            result["url"] = f"https://www.google.com/maps/{action}/?{urlencode(params)}"
+            if len(result["url"]) > 2048:
+                raise ValueError(f"Day {number} map URL exceeds the URLs API's 2048-character limit; shorten place details.")
+            warning = ""
+            if dropped:
+                warning = (f"Omitted {len(dropped)} later stop(s): mobile Maps URLs support at most "
+                           f"{MAP_WAYPOINT_LIMIT} waypoints (5 stops).")
+                result["warning"] = warning
+            lines.append(f"*Day {number}* {result['url']}" + (f" ({warning})" if warning else ""))
+        results.append(result)
+    return {"days": results}, lines or ["*Map* No planned days yet; add stops with trip day N add WISHLIST_ID."]
+
+
 def trip_command(args, store):
     with store.transaction():
         trip = store.read("trip")
         wishlist = store.read("wishlist")
+        if args.action == "map":
+            return map_days(trip, wishlist, args.day)
         if args.action == "set":
             supplied = [args.start, args.end, args.cities, args.budget_sgd, args.interests, args.categories]
             if all(value is None for value in supplied):

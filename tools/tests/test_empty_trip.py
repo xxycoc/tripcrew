@@ -130,3 +130,13 @@ def test_empty_trip_through_real_module(args, code):
         assert data["trip"] == EMPTY_TRIP
     else:
         assert "aren't set yet" in data["reason"]
+
+
+@pytest.mark.parametrize("settings", [[], ["--start", "2026-12-10"], ["--end", "2026-12-16"]])
+@pytest.mark.parametrize("day", [[], ["1"]])
+def test_map_requires_dates(call, settings, day):
+    if settings:
+        call("trip", "set", *settings)
+    before = Store().read("trip")
+    assert "Trip dates aren't set yet" in call("trip", "map", *day, ok=False)["reason"]
+    assert Store().read("trip") == before

@@ -5,6 +5,7 @@ Run from `agents/reel-adder/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`;
 | Command | Accepted arguments | Effect |
 | --- | --- | --- |
 | `trip show` | none | Read trip cities and dates. |
+| `trip map [N]` | optional day `N` | Planner's read-only Google Maps links; ask Planner to include the day's link in its summary. |
 | `wishlist list` | `--city CITY`, `--category food\|attraction\|tip`, `--unplanned` | Read existing places and sources, including possible duplicates. |
 | `reel fetch URL` | `--audio` | Extract TikTok/Instagram metadata; short captions or `--audio` trigger audio transcription. |
 | `wishlist add` | required `--name NAME --area AREA --city CITY --category food\|attraction\|tip`; optional `--price-jpy AMOUNT --hours HOURS --url URL --verified --note NOTE` | Save a source-backed place. Returns its new `w_` ID. |

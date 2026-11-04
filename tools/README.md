@@ -17,6 +17,7 @@ failures. Success exits 0, failure exits 1; `--help` exits 0.
 
 ```text
 trip show
+trip map [N]
 trip set [--start YYYY-MM-DD] [--end YYYY-MM-DD]
          [--cities Osaka Kyoto] [--budget-sgd 1500] [--interests food temples]
          [--categories flight=700 other=800]
@@ -55,6 +56,24 @@ interests are empty lists, and days are an empty object. No destination, dates o
 budget are assumed. Planner sets the dates, cities and interests from the
 person's Telegram messages; Budget sets the requested budget. The Osaka/Kyoto
 values above are examples to supply explicitly, not defaults.
+
+`trip map N` reads one day's Google Maps link; `trip map` reads every planned day
+in numeric day order, skipping unplanned days. Both require trip dates. Human
+output is one `*Day N* <url>` line per planned day. An explicitly requested empty
+day reports `Unplanned; no stops to map.`; no planned days produces a clear
+message. The command makes no network requests or changes to saved state.
+
+Links use the [Google Maps URLs API](https://developers.google.com/maps/documentation/urls/guide):
+one stop opens search; two or more open directions with `travelmode=transit`.
+Each query combines the stop's name, area and city in itinerary order, with
+UTF-8 URL encoding. Source URLs, including Google Maps place links, are not parsed.
+Mobile browsers support three intermediate waypoints (other platforms up to nine),
+so links use the first five stops, ending at the fifth when a day is longer.
+Later stops are omitted with an explicit warning. JSON returns `days` with
+`day`, `url`, `stops` used (`id`, `name`, `area`, `city`), `dropped_stops` and any
+`warning` or unplanned `message`; empty days have `url: null`. Links exceeding
+the API's 2,048-character limit fail with a clear error. Maps products may ignore
+waypoints when unsupported; phone routing and place matches require live review.
 
 `trip show` explains that no trip is set yet and lists the `trip set` flags.
 Settings can be supplied together or incrementally, including one date at a
