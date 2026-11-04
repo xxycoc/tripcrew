@@ -1,0 +1,26 @@
+[switch]
+# Agent bridge origin, not the Gateway dashboard URL. GET /health must return 200.
+base_url = "http://127.0.0.1:8000"
+agent_name = "custom.viewer.owner"
+# Filled by registration in the key file; set this only for an existing agent.
+agent_id = ""
+api_key_path = ".local/viewer.json"
+
+[server]
+ws_port = 8770
+reel_port = 8771
+
+# Keys are exact opaque participant IDs, registered names, or display names.
+# Prefer participant IDs when names are not unique. No sender ID parsing.
+[actors]
+"custom.planner.owner" = "planner"
+"custom.budget.owner" = "budget"
+"custom.reel-adder.owner" = "reel_adder"
+"YOUR_SWITCH_DISPLAY_NAME" = "you"
+
+# Explicit @handles in message bodies, including each room's aliases.
+# Registered names in [actors] are also recognized as handles.
+[mentions]
+planner = "planner"
+budget = "budget"
+reel = "reel_adder"
