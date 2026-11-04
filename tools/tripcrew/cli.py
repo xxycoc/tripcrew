@@ -250,7 +250,7 @@ def trip_command(args, store):
                 count = day_count(trip)
                 if any(int(day) > count and stops for day, stops in trip["days"].items()):
                     raise ValueError("New dates would discard planned days; remove or move those stops first.")
-                if any(item["day"] > count for item in store.read("spend")):
+                if any(item["day"] is not None and item["day"] > count for item in store.read("spend")):
                     raise ValueError("New dates would exclude recorded spending; keep those days in the trip.")
                 trip["days"] = {day: stops for day, stops in trip["days"].items() if int(day) <= count}
             if args.budget_sgd is not None:
@@ -516,6 +516,9 @@ def day_cost_check(args, store, trip, entries, wishlist, count, total_budget):
             lines.append("*Most expensive* " + "; ".join(
                 f"{item['id']} {text(item['name'])}, {text(item['area'])}: SGD {item['estimate_sgd']} estimated"
                 for item in expensive))
+    for day in days:
+        if day["over_budget"]:
+            activity.post_event("budget", "planner", "delegated", f"Day {day['day']} over by S${day['difference_sgd']}")
     return {"days": days, "fx": fx}, [*(lines or ["*Check* No planned days."]), *fx_lines(fx)]
 
 

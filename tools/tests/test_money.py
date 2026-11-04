@@ -273,3 +273,24 @@ def test_day_check_fx_sources_and_failure(call, monkeypatch, demo_trip, source, 
     assert "UNDER by SGD" in output and "*Most expensive*" in output
     if source == "stale_cache":
         assert "Offline: using cached FX" in output
+
+
+def test_price_and_over_budget_day_send_budget_cards(call, monkeypatch, demo_trip, activity_events):
+    monkeypatch.setattr(money, "timestamp", lambda: NOW)
+    cached(Store())
+    call("trip", "set", "--budget-sgd", "1500", "--categories", "flight=700", "other=800")
+    stop = call("wishlist", "add", "--name", "Kobe beef", "--area", "Namba", "--city", "Osaka",
+                "--category", "food", "--reel")["item"]["id"]
+    call("trip", "day", "2", "add", stop)
+    activity_events.clear()
+    call("wishlist", "price", stop, "--price-jpy", "20000", "--source-note", "menu")
+    assert call("budget", "check", "--day", "2")["days"][0]["over_budget"] is True
+    assert activity_events == [
+        {"type": "task", "from": "budget", "to": "planner", "state": "finalised", "summary": "Kobe beef: ¥20000"},
+        {"type": "task", "from": "budget", "to": "planner", "state": "delegated", "summary": "Day 2 over by S$452.61"}]
+
+
+def test_pre_trip_spend_survives_date_change(call, demo_trip):
+    call("trip", "set", "--budget-sgd", "1500", "--categories", "flight=700", "other=800")
+    call("spend", "add", "620", "SGD", "--note", "flight", "--category", "flight")
+    assert call("trip", "set", "--end", "2026-12-15")["trip"]["end"] == "2026-12-15"
