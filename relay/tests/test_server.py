@@ -27,7 +27,7 @@ async def test_real_websocket_broadcast_reel_and_late_replay(config):
             for ws in (first, second):
                 reel, board = await receive(ws), await receive(ws)
                 assert reel["step"] == "failed"
-                assert board["lines"] == ["instagram failed: Private reel"]
+                assert board["lines"] == ["reel_adder: Instagram reel failed, Private reel"]
                 events.append((reel, board))
             assert events[0] == events[1]
             await hub.publish(event("switch_on"))

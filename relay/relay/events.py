@@ -77,5 +77,10 @@ class Mapper:
                 if not isinstance(body[key], str):
                     raise ValueError(f"{key} must be a string")
                 fields[key] = body[key]
-        detail = fields.get("place") or fields.get("reason") or ""
-        return [event("reel", **fields), self.board(f"{body['platform']} {body['step']}: {detail}")]
+        platform = {"tiktok": "TikTok", "instagram": "Instagram"}[body["platform"]]
+        # Fetch progress is shown by the animation; the board keeps only outcomes.
+        if body["step"] == "identified":
+            return [event("reel", **fields), self.board(f"reel_adder: {platform} reel is {fields.get('place', '?')}")]
+        if body["step"] == "failed":
+            return [event("reel", **fields), self.board(f"reel_adder: {platform} reel failed, {fields.get('reason', '?')}")]
+        return [event("reel", **fields)]
