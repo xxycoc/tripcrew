@@ -1,3 +1,5 @@
+import json
+
 import aiohttp
 from aiohttp.test_utils import TestServer
 
@@ -50,3 +52,37 @@ async def test_demo_mode_handshake(config):
     async with TestServer(app) as server, aiohttp.ClientSession() as client:
         async with client.ws_connect(server.make_url("/")) as ws:
             assert (await receive(ws))["mode"] == "demo"
+
+
+async def test_activity_intake_broadcast_validation_and_late_board(config):
+    hub, mapper = Hub("live"), Mapper(config)
+    ws_app, intake_app = applications(hub, mapper)
+    async with TestServer(ws_app) as ws_server, TestServer(intake_app) as intake, aiohttp.ClientSession() as client:
+        async with client.ws_connect(ws_server.make_url("/")) as first, client.ws_connect(ws_server.make_url("/")) as second:
+            for ws in (first, second):
+                await receive(ws)
+                await receive(ws)
+            payload = {"type": "task", "from": "planner", "to": "you", "state": "finalised", "summary": "Day 2: Park"}
+            async with client.post(intake.make_url("/activity"), json={**payload, "v": 99, "ts": "fake"}) as response:
+                assert response.status == 204 and await response.read() == b""
+            events = []
+            for ws in (first, second):
+                task, board = await receive(ws), await receive(ws)
+                assert task == {**payload, "v": 1, "ts": task["ts"]} and task["ts"] != "fake"
+                assert board["lines"] == ["planner → you: Day 2: Park"]
+                events.append((task, board))
+            assert events[0] == events[1]
+            async with client.ws_connect(ws_server.make_url("/")) as late:
+                await receive(late)
+                assert await receive(late) == events[0][1]
+            for body in [None, [], {}, {**payload, "from": "unknown"}, {**payload, "summary": "x" * 81}]:
+                async with client.post(intake.make_url("/activity"), data=json.dumps(body)) as response:
+                    assert response.status == 400
+            async with client.post(intake.make_url("/activity"), data="not-json") as response:
+                assert response.status == 400
+            async with client.post(intake.make_url("/activity"), json={**payload, "extra": "x" * (64 * 1024)}) as response:
+                assert response.status == 413
+            await hub.publish(event("join", actor="budget"))
+            for ws in (first, second):
+                assert (await receive(ws))["type"] == "join"
+            assert list(mapper.lines) == ["planner → you: Day 2: Park"]

@@ -71,6 +71,16 @@ def applications(hub, mapper):
         return web.Response(status=204)
 
     reel_app.router.add_post("/reel", reel)
+
+    async def activity(request):
+        try:
+            items = mapper.activity(await request.json())
+        except (ValueError, TypeError):
+            raise web.HTTPBadRequest(text="Invalid activity body") from None
+        await hub.publish_many(items)
+        return web.Response(status=204)
+
+    reel_app.router.add_post("/activity", activity)
     return ws_app, reel_app
 
 

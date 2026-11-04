@@ -3,6 +3,8 @@
 {"at":2,"v":1,"type":"join","ts":"2026-11-05T03:12:02Z","actor":"planner"}
 {"at":3,"v":1,"type":"join","ts":"2026-11-05T03:12:03Z","actor":"budget"}
 {"at":4,"v":1,"type":"join","ts":"2026-11-05T03:12:04Z","actor":"reel_adder"}
+{"at":5,"v":1,"type":"task","ts":"2026-11-05T03:12:05Z","from":"planner","to":"you","state":"finalised","summary":"Trip: 10–16 Dec, Osaka + Kyoto"}
+{"at":6,"v":1,"type":"task","ts":"2026-11-05T03:12:06Z","from":"budget","to":"you","state":"finalised","summary":"Budget S$1,500"}
 {"at":7,"v":1,"type":"user_message","ts":"2026-11-05T03:12:07Z","text":"Can we add this Osaka reel to day two?"}
 {"at":8,"v":1,"type":"board","ts":"2026-11-05T03:12:08Z","lines":["OSAKA / DAY TWO","New reel from you","Dinner spot pending"]}
 {"at":9,"v":1,"type":"addressed","ts":"2026-11-05T03:12:09Z","actor":"reel_adder","text":"Find the place in this reel."}
@@ -11,12 +13,15 @@
 {"at":17,"v":1,"type":"reel","ts":"2026-11-05T03:12:17Z","step":"watching","platform":"tiktok"}
 {"at":21,"v":1,"type":"reel","ts":"2026-11-05T03:12:21Z","step":"identified","platform":"tiktok","place":"Kushikatsu Daruma, Shinsekai"}
 {"at":23,"v":1,"type":"addressed","ts":"2026-11-05T03:12:23Z","actor":"planner","text":"Add the dinner pin to day two."}
-{"at":26,"v":1,"type":"task","ts":"2026-11-05T03:12:26Z","from":"reel_adder","to":"planner","state":"accepted","summary":"Kushikatsu Daruma pin found"}
+{"at":26,"v":1,"type":"task","ts":"2026-11-05T03:12:26Z","from":"reel_adder","to":"planner","state":"delegated","summary":"Hiraoka Park"}
+{"at":26,"v":1,"type":"board","ts":"2026-11-05T03:12:26Z","lines":["reel_adder → planner: Hiraoka Park"]}
 {"at":28,"v":1,"type":"agent_message","ts":"2026-11-05T03:12:28Z","actor":"reel_adder","text":"Found it: Kushikatsu Daruma in Shinsekai."}
 {"at":29,"v":1,"type":"addressed","ts":"2026-11-05T03:12:29Z","actor":"budget","text":"Check the dinner budget."}
+{"at":30,"v":1,"type":"task","ts":"2026-11-05T03:12:30Z","from":"planner","to":"you","state":"finalised","summary":"Day 2: Hiraoka Park"}
 {"at":31,"v":1,"type":"agent_message","ts":"2026-11-05T03:12:31Z","actor":"planner","text":"Added to day two after the Shinsekai walk."}
 {"at":33,"v":1,"type":"agent_message","ts":"2026-11-05T03:12:33Z","actor":"budget","text":"Dinner fits the budget: allow 2,000 yen each."}
-{"at":36,"v":1,"type":"task","ts":"2026-11-05T03:12:36Z","from":"budget","to":"planner","state":"finalised","summary":"Dinner budget checked"}
+{"at":34,"v":1,"type":"task","ts":"2026-11-05T03:12:34Z","from":"budget","to":"you","state":"finalised","summary":"S$12.14 · ramen"}
+{"at":36,"v":1,"type":"task","ts":"2026-11-05T03:12:36Z","from":"budget","to":"planner","state":"delegated","summary":"Day 2 over budget: move dinner"}
 {"at":37,"v":1,"type":"board","ts":"2026-11-05T03:12:37Z","lines":["OSAKA / DAY TWO","Shinsekai walk","Kushikatsu Daruma","Dinner: 2,000 yen","Pin added by Reel Adder","Budget checked"]}
 {"at":42,"v":1,"type":"user_message","ts":"2026-11-05T03:12:42Z","text":"What about this Instagram reel?"}
 {"at":44,"v":1,"type":"reel","ts":"2026-11-05T03:12:44Z","step":"fetch_start","platform":"instagram"}

@@ -66,3 +66,34 @@ def test_reel_adds_own_envelope_and_board(config):
                                "place": "Kushikatsu Daruma, Shinsekai", "v": 99, "ts": "fake"})
     assert items[0]["v"] == 1 and items[0]["ts"] != "fake"
     assert items[1]["type"] == "board" and "Kushikatsu Daruma" in items[1]["lines"][0]
+
+
+@pytest.mark.parametrize("state", ["delegated", "accepted", "finalised"])
+@pytest.mark.parametrize("source,target", [("planner", "you"), ("budget", "you"),
+    ("reel_adder", "planner"), ("budget", "planner"), ("you", "reel_adder")])
+def test_activity_contract_board_and_envelope(config, state, source, target):
+    body = {"type": "task", "from": source, "to": target, "state": state, "summary": "x" * 80}
+    mapper = Mapper(config)
+    for _ in range(8):
+        task, board = mapper.activity({**body, "v": 99, "ts": "fake", "extra": "ignored"})
+    assert task == {**body, "v": 1, "ts": task["ts"]}
+    assert datetime.fromisoformat(task["ts"]).utcoffset().total_seconds() == 0
+    assert board["lines"] == [(f"{source} → {target}: " + "x" * 80)[:80]] * 6
+
+
+@pytest.mark.parametrize("change", [{"type": "reel"}, {"from": "unknown"}, {"from": []},
+    {"to": None}, {"to": {}}, {"state": "working"}, {"state": []}, {"summary": 1},
+    {"summary": ""}, {"summary": " "}, {"summary": "x" * 81}, {"summary": "line\nbreak"},
+    {"summary": "line\n"}, {"summary": "line\r"}, {"summary": "line\u2028"}])
+def test_activity_validation(config, change):
+    mapper = Mapper(config)
+    with pytest.raises(ValueError):
+        mapper.activity({"type": "task", "from": "planner", "to": "you", "state": "finalised",
+                         "summary": "Day 2: Park", **change})
+    assert not mapper.lines
+
+
+@pytest.mark.parametrize("body", [None, [], {}, {"type": "task"}])
+def test_activity_missing_fields(config, body):
+    with pytest.raises(ValueError):
+        Mapper(config).activity(body)

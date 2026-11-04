@@ -6,7 +6,7 @@ import sys
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from . import money, receipts, reels
+from . import activity, money, receipts, reels
 from .store import Store
 
 
@@ -67,6 +67,7 @@ def parser():
     add.add_argument("--url", default="", help="Source URL.")
     add.add_argument("--verified", action="store_true", help="Mark externally verified.")
     add.add_argument("--note", default="")
+    add.add_argument("--reel", action="store_true", help="Let the following reel identified command animate this place; skip the wishlist card.")
     listing = commands.add_parser("list", help="Filter saved places; --unplanned excludes all itinerary stops.")
     listing.add_argument("--city")
     listing.add_argument("--category", choices=["food", "attraction", "tip"])
@@ -293,6 +294,23 @@ def trip_command(args, store):
                 target.insert(position - 1, args.id)
             store.write("trip", trip)
     names = {item["id"]: item["name"] for item in wishlist}
+    if args.action == "set":
+        if any(value is not None for value in (args.start, args.end, args.cities)):
+            dates = [date.fromisoformat(value) for value in (trip["start"], trip["end"]) if value]
+            labels = [f"{value.day} {value:%b}" for value in dates]
+            if len(dates) == 2 and dates[0].year != dates[1].year:
+                labels = [f"{value.day} {value:%b %Y}" for value in dates]
+            elif len(dates) == 2 and dates[0].month == dates[1].month:
+                labels[0] = str(dates[0].day)
+            summary = ", ".join(value for value in ("–".join(labels), " + ".join(trip["cities"])) if value)
+            activity.post_event("planner", "you", "finalised", f"Trip: {summary}")
+        if args.budget_sgd is not None or args.categories is not None:
+            amount = format(Decimal(trip["budget_sgd"]), ",.2f").removesuffix(".00")
+            activity.post_event("budget", "you", "finalised", f"Budget S${amount}")
+    elif args.action == "day" and args.operation in {"add", "move"}:
+        destination = getattr(args, "to_day", None)
+        destination = args.day if destination is None else destination
+        activity.post_event("planner", "you", "finalised", f"Day {destination}: {names[args.id]}")
     if not any(trip[key] for key in ("start", "end", "cities", "interests", "days")) and trip["budget_sgd"] is None:
         return {"trip": trip}, ["*Trip* No trip is set yet.", f"*Setup* {TRIP_SETUP}"]
     dates = f"{trip['start'] or 'not set'} to {trip['end'] or 'not set'}"
@@ -323,8 +341,8 @@ def wishlist_command(args, store):
                     "hours": args.hours, "source_url": args.url, "verified": args.verified, "note": args.note}
             entries.append(item)
             store.write("wishlist", entries)
-            return {"item": item}, [wishlist_line(item)]
-        if args.action == "price":
+            # Post outside the transaction so an offline relay does not hold the state lock.
+        elif args.action == "price":
             if not args.source_note.strip():
                 raise ValueError("Price source note cannot be blank.")
             item = next((entry for entry in entries if entry["id"] == args.id), None)
@@ -334,8 +352,7 @@ def wishlist_command(args, store):
                                  else str(money.number(args.price_jpy)))
             item["price_source_note"] = text(args.source_note)
             store.write("wishlist", entries)
-            return {"item": item}, [wishlist_line(item)]
-        if args.action == "remove":
+        elif args.action == "remove":
             if args.id in planned:
                 raise ValueError("Place is on the itinerary; remove its stops before removing the wishlist entry.")
             remaining = [entry for entry in entries if entry["id"] != args.id]
@@ -343,10 +360,19 @@ def wishlist_command(args, store):
                 raise ValueError("Unknown wishlist ID.")
             store.write("wishlist", remaining)
             return {"removed": args.id}, [f"*Removed* {args.id}"]
-        entries = [entry for entry in entries
-                   if (not args.city or entry["city"].casefold() == args.city.casefold())
-                   and (not args.category or entry["category"] == args.category)
-                   and (not args.unplanned or entry["id"] not in planned)]
+        else:
+            entries = [entry for entry in entries
+                       if (not args.city or entry["city"].casefold() == args.city.casefold())
+                       and (not args.category or entry["category"] == args.category)
+                       and (not args.unplanned or entry["id"] not in planned)]
+    if args.action == "add":
+        if not args.reel:
+            activity.post_event("reel_adder", "planner", "delegated", item["name"])
+        return {"item": item}, [wishlist_line(item)]
+    if args.action == "price":
+        price = "price unknown" if item["price_jpy"] is None else f"¥{item['price_jpy']}"
+        activity.post_event("budget", "planner", "finalised", f"{item['name']}: {price}")
+        return {"item": item}, [wishlist_line(item)]
     return {"wishlist": entries}, [wishlist_line(item) for item in entries] or ["*Wishlist* empty"]
 
 
@@ -392,6 +418,7 @@ def spend_command(args, store):
             if saved is not None:
                 saved.unlink(missing_ok=True)
             raise
+    activity.post_event("budget", "you", "finalised", f"S${item['amount_sgd']} · {item['note']}")
     return {"item": item}, [spend_line(item), *fx_lines(item["fx"])]
 
 

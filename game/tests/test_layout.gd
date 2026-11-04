@@ -112,7 +112,7 @@ func run() -> void:
 		feed._process(0.25)
 		await process_frame
 		check_overlays(frame)
-	check(feed.replay_index == 24, "layout replay covers all events, including failure after 52 seconds")
+	check(feed.replay_index == 29, "layout replay covers all events, including failure after 52 seconds")
 	check(world.actors.you.position.distance_to(world.actors.reel_adder.position) >= 50, "final characters stand beside each other without overlap")
 	world.free()
 	print("TripCrew layout tests: %d assertions, %d failures" % [assertions, failures])

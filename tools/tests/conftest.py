@@ -9,6 +9,20 @@ def isolated(monkeypatch, tmp_path):
     monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: pytest.fail("Unexpected network request"))
     monkeypatch.setattr("tripcrew.money.urlopen", lambda *a, **k: pytest.fail("Unexpected FX request"))
     monkeypatch.setattr("tripcrew.reels.urlopen", lambda *a, **k: pytest.fail("Unexpected relay request"))
+    monkeypatch.setattr("tripcrew.activity.urlopen", lambda *a, **k: pytest.fail("Unexpected activity request"))
+
+
+@pytest.fixture(autouse=True)
+def activity_events(monkeypatch):
+    events = []
+
+    def post(from_actor, to_actor, state, summary):
+        payload = {"type": "task", "from": from_actor, "to": to_actor, "state": state, "summary": summary}
+        events.append(payload)
+        return payload
+
+    monkeypatch.setattr("tripcrew.activity.post_event", post)
+    return events
 
 
 @pytest.fixture

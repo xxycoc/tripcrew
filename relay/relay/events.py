@@ -64,6 +64,20 @@ class Mapper:
             return [event("task", **{"from": requester, "to": performer, "state": states[kind], "summary": short(summary)})]
         return []
 
+    def activity(self, body: dict) -> list[dict]:
+        if not isinstance(body, dict) or body.get("type") != "task":
+            raise ValueError("Expected a task event body")
+        for key in ("from", "to"):
+            if not isinstance(body.get(key), str) or body[key] not in {"planner", "budget", "reel_adder", "you"}:
+                raise ValueError(f"Unknown {key} actor")
+        if not isinstance(body.get("state"), str) or body["state"] not in {"delegated", "accepted", "finalised"}:
+            raise ValueError("Unknown task state")
+        summary = body.get("summary")
+        if not isinstance(summary, str) or not summary.strip() or len(summary) > 80 or summary.splitlines() != [summary]:
+            raise ValueError("Summary must be one nonblank line, at most 80 characters")
+        fields = {key: body[key] for key in ("from", "to", "state", "summary")}
+        return [event("task", **fields), self.board(f"{body['from']} → {body['to']}: {summary}")]
+
     def reel(self, body: dict) -> list[dict]:
         if not isinstance(body, dict) or body.get("type") != "reel":
             raise ValueError("Expected a reel event body")

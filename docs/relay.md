@@ -62,17 +62,28 @@ history and adopts the server cursor. Authentication errors and a fenced takeove
 stop the process. Cursor and board live in memory; restarting starts a new live
 observation, not a replay of earlier sessions.
 
-## Reel intake and checks
+## Reel and activity intakes and checks
 
 ```powershell
 $body = @{ type='reel'; step='identified'; platform='tiktok'; place='Kushikatsu Daruma, Shinsekai' } | ConvertTo-Json
 Invoke-WebRequest http://127.0.0.1:8771/reel -Method Post -ContentType application/json -Body $body
+$activity = @{ type='task'; from='planner'; to='you'; state='finalised'; summary='Day 2: Hiraoka Park' } | ConvertTo-Json
+Invoke-WebRequest http://127.0.0.1:8771/activity -Method Post -ContentType application/json -Body $activity
 uv run --directory relay python -m pytest -q
 ```
 
-Valid intake returns 204 and broadcasts `reel` then the rolling six-line `board`.
-Invalid bodies return 400; oversized bodies return 413. Both servers bind only to
+Valid activity intake returns 204 and broadcasts `task` then the rolling six-line
+`board`, with one `from → to: summary` line capped at 80 characters. `/activity`
+accepts only contract actors, `delegated`/`accepted`/`finalised`, and a nonblank
+single-line string summary of at most 80 characters. Extra fields are ignored;
+the relay sets `v` and `ts`. `/reel` is unchanged: progress broadcasts only `reel`,
+and identified/failed outcomes also update the board.
+Invalid bodies return 400; bodies over 64 KiB return 413. Both servers bind only to
 loopback; ports are configurable. All events follow [the game contract](events.md).
+Tools use `TRIPCREW_RELAY_URL` (default `http://127.0.0.1:8771`) for both routes,
+with a one-second timeout and silent failure. Successful local writes remain
+successful when the relay is offline. `tripcrew.activity.post_event(from_actor,
+to_actor, state, summary)` submits one card and normalizes/caps its summary.
 The project is not packaged and `uv` builds are disabled, including dependencies.
 Tests use fake servers on loopback and require no internet or running Switch.
 
@@ -87,7 +98,9 @@ Tests use fake servers on loopback and require no internet or running Switch.
   the documented legacy `task_delegate`, `task_accept`, and `task_finalise` frames
   if delivered. `task_update` and `task_cancel` have no contract state and are dropped.
   Older task delivery is one-sided to requester/performer, so a separate Viewer
-  cannot observe those private frames. Demo tasks are explicitly synthetic.
+  cannot observe those private frames. Successful shared CLI writes now provide
+  observable activity through `/activity`; they report saved work, not internal
+  thinking or guaranteed chat delivery. Demo tasks are explicitly synthetic.
 - `switch_on` means a stream was opened at least once. The contract has no
   disconnection or history-gap event. Neither status is invented as game activity.
 
