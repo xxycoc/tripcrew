@@ -1,0 +1,22 @@
+[project]
+name = "tripcrew"
+version = "0.1.0"
+description = "Shared trip state, money and reel metadata for TripCrew agents"
+requires-python = ">=3.12"
+dependencies = [
+    "filelock>=3.16",
+    "yt-dlp>=2025.10.22",
+    "faster-whisper>=1.2",
+    # faster-whisper 1.2.1 uses metadata_errors, removed by PyAV 19.
+    "av>=11,<19",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,2 @@
+bin/tripcrew text eol=lf
+bin/tripcrew.cmd text eol=crlf
