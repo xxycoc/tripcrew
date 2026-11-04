@@ -32,4 +32,4 @@ def call(capsys):
 @pytest.fixture
 def demo_trip(call):
     return call("trip", "set", "--start", "2026-12-10", "--end", "2026-12-16",
-                "--cities", "Osaka", "Kyoto", "--budget-myr", "6000")["trip"]
+                "--cities", "Osaka", "Kyoto", "--budget-sgd", "6000")["trip"]

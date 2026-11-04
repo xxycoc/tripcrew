@@ -18,7 +18,8 @@ failures. Success exits 0, failure exits 1; `--help` exits 0.
 ```text
 trip show
 trip set [--start YYYY-MM-DD] [--end YYYY-MM-DD]
-         [--cities Osaka Kyoto] [--budget-myr 6000] [--interests food temples]
+         [--cities Osaka Kyoto] [--budget-sgd 1500] [--interests food temples]
+         [--categories flight=700 other=800]
 trip day N add WISHLIST_ID [--position N]
 trip day N remove WISHLIST_ID
 trip day N move WISHLIST_ID [--position N] [--to-day N]
@@ -29,10 +30,10 @@ wishlist add --name NAME --area AREA --city CITY
 wishlist list [--city CITY] [--category food|attraction|tip] [--unplanned]
 wishlist remove WISHLIST_ID
 
-spend add AMOUNT JPY|MYR --note NOTE --day N
+spend add AMOUNT JPY|SGD --note NOTE [--day N] [--category NAME]
 spend list
 budget status [--day N]
-fx convert AMOUNT JPY|MYR JPY|MYR
+fx convert AMOUNT JPY|SGD JPY|SGD
 
 reel fetch URL [--audio]
 reel identified --place "Name, area" [--platform tiktok|instagram]
@@ -77,7 +78,7 @@ Missing JSON files use defaults until their first mutation. The four files are:
 - `trip.json`: settings and `days`, an object mapping day numbers to ordered IDs.
 - `wishlist.json`: place objects with stable `w_` IDs.
 - `spend.json`: expense objects with stable `s_` IDs and original currency.
-- `fx.json`: the last successfully fetched JPY-to-MYR rate and its timestamps.
+- `fx.json`: the last successfully fetched JPY-to-SGD rate and its timestamps.
 
 Existing saved trips are preserved; changing the defaults does not clear them.
 
@@ -88,18 +89,18 @@ the same directory followed by atomic replacement. Readers use the same lock
 indented UTF-8; stop writers before hand-editing it. Malformed JSON is reported
 and preserved rather than overwritten.
 
-Money uses Decimal, with MYR amounts rounded half up to cents. Spending preserves
-the original amount and the MYR amount booked using that entry's FX, so a later
+Money uses Decimal, with SGD amounts rounded half up to cents. Spending preserves
+the original amount and the SGD amount booked using that entry's FX, so a later
 rate refresh does not rewrite history. Daily budget shares sum exactly to the
 trip budget; extra cents go to the earliest days. Negative amounts left indicate
 overspending. `budget status --day` keeps trip totals and filters daily detail.
 
 [Frankfurter's documented v1 endpoint](https://frankfurter.dev/v1/) is
-`https://api.frankfurter.dev/v1/latest?base=JPY&symbols=MYR`. v1 is deprecated but
+`https://api.frankfurter.dev/v1/latest?base=JPY&symbols=SGD`. v1 is deprecated but
 continues to work. Cache lifetime is 12 hours from fetch time, distinct from the
 published rate date. An expired cache is refreshed; when offline, the old rate is
 used with an explicit age warning. With no usable cache, conversion fails.
-Same-currency conversion and MYR spending need no network.
+Same-currency conversion and SGD spending need no network.
 
 ## Reels and relay
 

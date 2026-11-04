@@ -52,19 +52,19 @@ def test_invalid_moves_leave_state_unchanged(call, demo_trip):
 def test_trip_set_preserves_stops_and_validates_dates(call, demo_trip):
     stop = place(call)
     call("trip", "day", "7", "add", stop)
-    call("trip", "set", "--cities", "Osaka", "Kyoto", "--interests", "food", "culture", "--budget-myr", "6500")
+    call("trip", "set", "--cities", "Osaka", "Kyoto", "--interests", "food", "culture", "--budget-sgd", "6500")
     changed = call("trip", "show")["trip"]
     assert changed["days"]["7"] == [stop]
-    assert changed["budget_myr"] == "6500.00"
+    assert changed["budget_sgd"] == "6500.00"
     assert changed["interests"] == ["food", "culture"]
     for args in [("--end", "2026-12-11"), ("--end", "2026-12-01"), ("--start", "nonsense"),
-                 ("--budget-myr", "1.001"), ("--budget-myr", "-1")]:
+                 ("--budget-sgd", "1.001"), ("--budget-sgd", "-1")]:
         call("trip", "set", *args, ok=False)
         assert Store().read("trip") == changed
 
 
 def test_dates_cannot_exclude_spending(call, demo_trip):
-    call("spend", "add", "100", "MYR", "--note", "hotel", "--day", "7")
+    call("spend", "add", "100", "SGD", "--note", "hotel", "--day", "7")
     call("trip", "set", "--end", "2026-12-15", ok=False)
     assert call("spend", "list")["spend"][0]["day"] == 7
 
@@ -75,8 +75,8 @@ def test_wishlist_unknown_price_and_unverified(call):
     assert result["item"]["verified"] is False
 
 
-@pytest.mark.parametrize("args", [("spend", "add", "0", "MYR", "--note", "bad", "--day", "1"),
-                                 ("spend", "add", "1.005", "MYR", "--note", "bad", "--day", "1"),
+@pytest.mark.parametrize("args", [("spend", "add", "0", "SGD", "--note", "bad", "--day", "1"),
+                                 ("spend", "add", "1.005", "SGD", "--note", "bad", "--day", "1"),
                                  ("spend", "add", "100", "JPY", "--note", "bad", "--day", "0"),
                                  ("budget", "status", "--day", "8"),
                                  ("trip", "set"), ("wishlist", "remove", "unknown"),
@@ -114,4 +114,4 @@ def test_launcher_from_unrelated_directory(tmp_path):
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["ok"] is True
     assert json.loads(result.stdout)["trip"] == {
-        "start": None, "end": None, "cities": [], "budget_myr": None, "interests": [], "days": {}}
+        "start": None, "end": None, "cities": [], "budget_sgd": None, "interests": [], "days": {}}
