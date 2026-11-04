@@ -157,7 +157,7 @@ func build_job(event: Dictionary) -> void:
 				"failed":
 					state("walking", "?")
 					var user_x := user_actor.position.x if user_actor != null else 378.0
-					route(Vector2(clampf(user_x - 28, 130, 442), LOWER))
+					route(Vector2(clampf(user_x - 56, 130, 422), LOWER))
 					state("failed", "?")
 					wait_for(3)
 					state("idle")

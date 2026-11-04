@@ -17,7 +17,7 @@ func _process(delta: float) -> bool:
 	age += delta
 	if age > 70:
 		var feed: Node = world.get_node("Feed")
-		var passed: bool = world.replay and world.status_label.text == "REPLAY\nDEMO FEED" and feed.socket == null and feed.replay_index == 24 and world.actors.reel_adder.position == Vector2(350, 486)
+		var passed: bool = world.replay and world.status_label.text == "REPLAY\nDEMO FEED" and feed.socket == null and feed.replay_index == 24 and world.actors.reel_adder.position == Vector2(322, 486)
 		print("TripCrew replay CLI: %s; events=%d, badges=%s, socket=%s" % ["PASS" if passed else "FAIL", feed.replay_index, world.status_label.text.replace("\n", ", "), str(feed.socket)])
 		world.free()
 		quit(0 if passed else 1)
