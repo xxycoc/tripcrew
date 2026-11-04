@@ -1,0 +1,8 @@
+state/*
+!state/.gitkeep
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+game/.godot/
+result.md

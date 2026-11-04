@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TripCrew demo game: pick a look</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--ink:#e8e8ea;--mute:#9aa0aa;--line:#2a2f3a;--acc:#f4b860}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.5rem;margin:0 0 4px}
+h2{font-size:1.2rem;margin:36px 0 4px}
+.mute{color:var(--mute)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0}
+.card h3{margin:0 0 6px;font-size:1.05rem}
+.tag{display:inline-block;background:#262b36;color:var(--acc);border-radius:6px;padding:0 8px;font-size:.8rem;margin:0 6px 4px 0}
+.rec{color:#111;background:var(--acc)}
+canvas{width:100%;height:auto;image-rendering:pixelated;border-radius:8px;display:block;margin:12px 0 4px;background:#000}
+.step{font-size:.85rem;color:var(--acc);min-height:1.4em;margin-bottom:8px}
+ul{margin:6px 0;padding-left:20px}
+li{margin:2px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.frame{aspect-ratio:16/9;border:2px solid var(--line);border-radius:8px;position:relative;background:#0b0d11;overflow:hidden;margin:8px 0}
+.box{position:absolute;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;text-align:center;padding:4px}
+.tg{background:#2b5278;color:#dfeefc}
+.gm{background:#4a3560;color:#f3e4ff}
+.pick{border:1px dashed var(--acc);border-radius:12px;padding:12px 16px;margin-top:28px}
+</style>
+</head>
+<body>
+<main>
+<h1>TripCrew demo game: pick a look</h1>
+<p class="mute">Two picks: the look (A, B or C) and where the game sits in the video (1, 2 or 3). Each scene plays the same Reel Adder moment on a loop. These are code-drawn mockups. The real game uses the Kenney CC0 pack named on each card.</p>
+
+<h2>Pick 1: the look</h2>
+
+<div class="card">
+  <h3>A. Cozy office, top-down</h3>
+  <span class="tag">Kenney Roguelike Indoors + Tiny Town (16 px)</span>
+  <canvas id="A" width="960" height="540"></canvas>
+  <div class="step" id="A-step"></div>
+  <ul>
+    <li>Looks like Stardew or Pokémon. Warm and familiar.</li>
+    <li>Agent rooms down the left, Telegram hall in the middle, screening room through the top door.</li>
+    <li>Cost: characters need walk animations in 4 directions.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>B. Dollhouse cross-section, side view <span class="tag rec">Recommended</span></h3>
+  <span class="tag">Kenney Pixel Platformer + Industrial expansion (18 px)</span>
+  <canvas id="B" width="960" height="540"></canvas>
+  <div class="step" id="B-step"></div>
+  <ul>
+    <li>Like Fallout Shelter: every room is visible at once, so a viewer can follow who goes where.</li>
+    <li>Agent rooms upstairs, Telegram hall downstairs. Agents climb down a ladder when called, and Reel Adder sprints out the TikTok/IG door.</li>
+    <li>Cheapest to animate: one walk cycle, flipped left or right.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>C. 1-bit minimal, top-down</h3>
+  <span class="tag">Kenney 1-Bit Pack (16 px)</span>
+  <canvas id="C" width="960" height="540"></canvas>
+  <div class="step" id="C-step"></div>
+  <ul>
+    <li>White on black, with one accent colour per agent. Reads well even when small on screen.</li>
+    <li>Looks technical rather than cute. Fits a dev tool more than a travel app.</li>
+    <li>Fastest to build: one huge pack, no palette clashes.</li>
+  </ul>
+</div>
+
+<h2>Pick 2: where it sits in the video</h2>
+<div class="grid">
+  <div class="card">
+    <h3>1. Split screen <span class="tag rec">Recommended</span></h3>
+    <div class="frame">
+      <div class="box tg" style="left:3%;top:5%;width:45%;height:90%">Telegram Desktop<br>(you dictate with Wispr)</div>
+      <div class="box gm" style="left:52%;top:5%;width:45%;height:90%">Game</div>
+    </div>
+    <p class="mute">Each message and the agent moving because of it appear side by side, so cause and effect are obvious.</p>
+  </div>
+  <div class="card">
+    <h3>2. Full-screen cutaways</h3>
+    <div class="frame">
+      <div class="box tg" style="left:3%;top:5%;width:94%;height:90%">Telegram full screen<br>→ cut to the game for 3 to 5 s at each handoff</div>
+    </div>
+    <p class="mute">Most cinematic, but it needs editing, and the game and chat are never on screen together.</p>
+  </div>
+  <div class="card">
+    <h3>3. Corner picture-in-picture</h3>
+    <div class="frame">
+      <div class="box tg" style="left:3%;top:5%;width:94%;height:90%">Telegram full screen</div>
+      <div class="box gm" style="right:5%;bottom:9%;width:36%;height:38%;border:2px solid #fff">Game</div>
+    </div>
+    <p class="mute">Chat stays readable, but the game is small. Works best with look C.</p>
+  </div>
+</div>
+
+<div class="pick">
+  <strong>Reply with one letter and one number</strong>, for example "B1". I recommend <strong>B1</strong>. The side view shows every room and every run out the door at once, it only needs half the sprite work of A, and on a split screen the chat and the game it drives sit side by side.
+</div>
+</main>
+
+<script>
+const W = 192, H = 108, S = 5, LOOP = 15;
+const COL = { you: "#4a90e2", plan: "#d97757", bud: "#10a37f", reel: "#e0559b" };
+
+const track = {
+  you:  [[0,"youOut"],[1.5,"youSpot"],[12.6,"youSpot"],[14.2,"youOut"],[15,"youOut"]],
+  reel: [[0,"reelHome"],[2.6,"reelHome"],[3.2,"reelDoor"],[4,"reelHall"],[4.8,"exitDoor"],[5.4,"screen"],[8,"screen"],[8.6,"exitDoor"],[9.4,"reelHall"],[12.4,"reelHall"],[13.2,"reelDoor"],[13.8,"reelHome"],[15,"reelHome"]],
+  plan: [[0,"planHome"],[9.6,"planHome"],[10.2,"planDoor"],[10.9,"planHall"],[12.4,"planHall"],[13.1,"planDoor"],[13.7,"planHome"],[15,"planHome"]],
+  bud:  [[0,"budHome"],[9.7,"budHome"],[10.3,"budDoor"],[11,"budHall"],[12.4,"budHall"],[13.1,"budDoor"],[13.7,"budHome"],[15,"budHome"]],
+};
+const bubbles = [
+  [1.6, 3.6, "you", "tiktok.com/@osakaeats/…"],
+  [5.6, 7.9, "reel", "watching…"],
+  [9.4, 11, "reel", "📍 Ichiran, Dotonbori"],
+  [11, 12.4, "plan", "Day 2 dinner"],
+  [11.2, 12.4, "bud", "¥1,500 ✓"],
+];
+const steps = [
+  [0, "You walk into the Telegram room"],
+  [1.6, "You drop a TikTok link (dictated with Wispr)"],
+  [2.6, "Reel Adder runs out the TikTok/IG door"],
+  [5.4, "Reel Adder watches the reel in the screening room"],
+  [8.6, "Reel Adder comes back with a pin card"],
+  [9.6, "Planner and Budget pick it up"],
+  [12.6, "Everyone heads back to their rooms"],
+];
+
+const layouts = {
+  A: {
+    pal: { bg:"#2a1e18", wall:"#5a3d2b", text:"#fff3df", bubble:"#fff8ec", bubbleInk:"#2a1e18", hair:"#3a2a20", skin:"#f2c9a0" },
+    pts: { planHome:[28,26], planDoor:[58,24], planHall:[76,52], budHome:[28,60], budDoor:[58,58], budHall:[80,72],
+           reelHome:[28,94], reelDoor:[58,92], reelHall:[98,88], exitDoor:[92,29], screen:[86,22],
+           youOut:[190,66], youSpot:[136,74] },
+    draw(c, t) {
+      const p = this.pal;
+      fill(c, 0, 0, W, H, p.bg);
+      room(c, 4, 4, 52, 32, "#c8a26b", "#bd955f", p.wall);
+      room(c, 4, 38, 52, 32, "#b9c48a", "#adb87f", p.wall);
+      room(c, 4, 72, 52, 32, "#d9a6c0", "#cf9ab5", p.wall);
+      room(c, 60, 30, 96, 74, "#e5d3b3", "#dccaa8", p.wall);
+      room(c, 60, 4, 60, 24, "#3b3550", "#35304a", p.wall);
+      [[56,20],[56,54],[56,88]].forEach(([x,y]) => fill(c, x, y, 4, 6, "#8a5a3a"));
+      fill(c, 88, 26, 8, 4, "#8a5a3a");
+      fill(c, 154, 62, 4, 8, "#8a5a3a");
+      fill(c, 92, 54, 30, 14, "#8b5a3c"); fill(c, 93, 55, 28, 12, "#a0694a");
+      plant(c, 64, 34); plant(c, 148, 34); plant(c, 64, 96);
+      fill(c, 66, 7, 20, 10, "#222"); fill(c, 67, 8, 18, 8, screenCol(t));
+      fill(c, 10, 10, 10, 6, "#8b5a3c"); fill(c, 10, 44, 10, 6, "#8b5a3c"); fill(c, 10, 78, 10, 6, "#8b5a3c");
+      label(c, "Planner", 6, 5, COL.plan, "Claude Code");
+      label(c, "Budget", 6, 39, COL.bud, "Codex");
+      label(c, "Reel Adder", 6, 73, COL.reel, "Claude Code");
+      label(c, "Telegram room · TripCrew", 62, 31, "#2b5278");
+      label(c, "Screening room", 88, 5, "#3b3550");
+      txt(c, "TikTok/IG", 98, 27, 2.4, p.text);
+      txt(c, "you →", 162, 58, 2.6, p.text);
+    },
+  },
+  B: {
+    pal: { bg:"#7ec8e3", wall:"#5b3a29", text:"#2b1c12", bubble:"#ffffff", bubbleInk:"#2b1c12", hair:"#3a2a20", skin:"#f2c9a0" },
+    pts: { planHome:[30,52], planDoor:[56,52], planHall:[56,100], budHome:[84,52], budDoor:[100,52], budHall:[100,100],
+           reelHome:[176,52], reelDoor:[160,52], reelHall:[160,100], exitDoor:[50,100], screen:[26,100],
+           youOut:[196,100], youSpot:[136,100] },
+    draw(c, t) {
+      const p = this.pal;
+      for (let y = 0; y < H; y += 4) fill(c, 0, y, W, 4, y < 60 ? "#86cde6" : "#93d3ea");
+      fill(c, 0, 103, W, 5, "#5d9e4a");
+      fill(c, 2, 4, 170, 2, p.wall);
+      room(c, 4, 6, 60, 46, "#f6dcc4", "#f1d4ba", null);
+      room(c, 66, 6, 60, 46, "#d9ebc8", "#d1e4bf", null);
+      room(c, 128, 6, 44, 46, "#f6d3e4", "#f0c9dc", null);
+      fill(c, 64, 6, 2, 46, p.wall); fill(c, 126, 6, 2, 46, p.wall);
+      fill(c, 2, 52, 170, 3, "#8b5a3c");
+      room(c, 4, 55, 44, 45, "#2f2a44", "#2b263f", null);
+      room(c, 52, 55, 120, 45, "#f1e3c6", "#ebdcbc", null);
+      fill(c, 48, 55, 4, 26, p.wall);
+      fill(c, 48, 81, 4, 19, "#c0392b");
+      fill(c, 2, 4, 2, 96, p.wall); fill(c, 172, 4, 2, 76, p.wall);
+      fill(c, 172, 80, 2, 20, "#8a5a3a");
+      fill(c, 2, 100, 172, 3, "#8b5a3c");
+      [56,100,160].forEach(x => { for (let y = 53; y < 100; y += 4) fill(c, x-3, y, 6, 1, "#7a4a2a"); fill(c, x-3, 53, 1, 47, "#7a4a2a"); fill(c, x+2, 53, 1, 47, "#7a4a2a"); });
+      fill(c, 10, 68, 30, 18, "#111"); fill(c, 11, 69, 28, 16, screenCol(t));
+      fill(c, 106, 90, 26, 3, "#8b5a3c"); fill(c, 108, 93, 2, 7, "#8b5a3c"); fill(c, 128, 93, 2, 7, "#8b5a3c");
+      fill(c, 12, 40, 14, 3, "#8b5a3c"); fill(c, 74, 40, 14, 3, "#8b5a3c"); fill(c, 136, 40, 14, 3, "#8b5a3c");
+      fill(c, 14, 30, 10, 10, "#333"); fill(c, 15, 31, 8, 7, "#ffd9a8");
+      fill(c, 76, 30, 10, 10, "#333"); fill(c, 77, 31, 8, 7, "#b5f0d8");
+      fill(c, 138, 30, 10, 10, "#333"); fill(c, 139, 31, 8, 7, "#ffc2df");
+      label(c, "Planner", 6, 8, COL.plan, "Claude Code");
+      label(c, "Budget", 68, 8, COL.bud, "Codex");
+      label(c, "Reel Adder", 130, 8, COL.reel, "Claude Code");
+      label(c, "Telegram room · TripCrew", 66, 57, "#2b5278");
+      label(c, "Screening", 6, 57, "#3b3550");
+      txt(c, "TikTok/IG", 50, 78, 2.3, "#fff", "#c0392b", true);
+      txt(c, "you →", 176, 74, 2.6, p.text);
+    },
+  },
+  C: {
+    pal: { bg:"#000", wall:"#fff", text:"#fff", bubble:"#000", bubbleInk:"#fff", bubbleLine:"#fff", hair:"#fff", skin:"#fff", mono:true },
+    pts: { planHome:[33,30], planDoor:[48,44], planHall:[60,64], budHome:[96,30], budDoor:[96,44], budHall:[96,66],
+           reelHome:[159,30], reelDoor:[150,44], reelHall:[128,82], exitDoor:[38,80], screen:[20,80],
+           youOut:[192,82], youSpot:[140,92] },
+    draw(c, t) {
+      fill(c, 0, 0, W, H, "#000");
+      dots(c, 40, 46, 120, 58);
+      outline(c, 4, 4, 58, 38); outline(c, 67, 4, 58, 38); outline(c, 130, 4, 58, 38);
+      outline(c, 40, 46, 120, 58); outline(c, 4, 46, 34, 58);
+      [[46,41],[94,41],[148,41]].forEach(([x,y]) => fill(c, x, y, 6, 6, "#000"));
+      fill(c, 37, 76, 4, 8, "#000"); fill(c, 159, 78, 2, 8, "#000");
+      fill(c, 4, 6, 3, 34, COL.plan); fill(c, 67, 6, 3, 34, COL.bud); fill(c, 130, 6, 3, 34, COL.reel);
+      fill(c, 8, 60, 26, 14, "#fff"); fill(c, 9, 61, 24, 12, screenCol(t, true));
+      fill(c, 84, 70, 28, 12, "#fff"); fill(c, 85, 71, 26, 10, "#000");
+      label(c, "Planner", 9, 6, COL.plan, "Claude Code", true);
+      label(c, "Budget", 72, 6, COL.bud, "Codex", true);
+      label(c, "Reel Adder", 135, 6, COL.reel, "Claude Code", true);
+      label(c, "Telegram room · TripCrew", 43, 48, "#2b5278", null, true);
+      label(c, "Screening", 6, 48, "#fff", null, true);
+      txt(c, "TikTok/IG", 6, 96, 2.3, "#fff");
+      txt(c, "you →", 164, 70, 2.6, "#fff");
+    },
+  },
+};
+
+function fill(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(x*S, y*S, w*S, h*S); }
+function room(c, x, y, w, h, a, b, wall) {
+  for (let i = 0; i < w; i += 4) for (let j = 0; j < h; j += 4) fill(c, x+i, y+j, Math.min(4, w-i), Math.min(4, h-j), ((i+j)/4) % 2 ? a : b);
+  if (wall) { fill(c, x-1, y-1, w+2, 1, wall); fill(c, x-1, y+h, w+2, 1, wall); fill(c, x-1, y, 1, h, wall); fill(c, x+w, y, 1, h, wall); }
+}
+function outline(c, x, y, w, h) { fill(c, x, y, w, 1, "#fff"); fill(c, x, y+h-1, w, 1, "#fff"); fill(c, x, y, 1, h, "#fff"); fill(c, x+w-1, y, 1, h, "#fff"); }
+function dots(c, x, y, w, h) { for (let i = 4; i < w; i += 6) for (let j = 4; j < h; j += 6) fill(c, x+i, y+j, 1, 1, "#333"); }
+function plant(c, x, y) { fill(c, x, y+4, 4, 3, "#8b5a3c"); fill(c, x-1, y, 6, 4, "#4f8a3a"); }
+function screenCol(t, mono) {
+  const on = t >= 5.4 && t < 8;
+  if (!on) return mono ? "#000" : "#1a1a22";
+  const f = Math.floor(t * 6) % 3;
+  return mono ? ["#fff","#888","#bbb"][f] : ["#ff3b6b","#25f4ee","#ffffff"][f];
+}
+function txt(c, s, x, y, size, col, bg, center) {
+  c.font = `bold ${size*S}px ui-monospace, Consolas, monospace`;
+  c.textBaseline = "top";
+  const w = c.measureText(s).width;
+  const px = center ? x*S - w/2 + 2*S : x*S;
+  if (bg) { c.fillStyle = bg; c.fillRect(px-4, y*S-2, w+8, size*S+4); }
+  c.fillStyle = col; c.fillText(s, px, y*S);
+}
+function label(c, name, x, y, col, badge, mono) {
+  c.font = `bold ${2.8*S}px ui-monospace, Consolas, monospace`;
+  c.textBaseline = "top";
+  const w = c.measureText(name).width;
+  c.fillStyle = mono ? "#000" : col; c.fillRect(x*S, y*S, w+10, 3.6*S);
+  if (mono) { c.strokeStyle = col; c.lineWidth = 2; c.strokeRect(x*S+1, y*S+1, w+8, 3.6*S-2); }
+  c.fillStyle = "#fff"; c.fillText(name, x*S+5, y*S+3);
+  if (badge) {
+    c.font = `bold ${2.2*S}px ui-monospace, Consolas, monospace`;
+    const bw = c.measureText(badge).width;
+    c.fillStyle = mono ? "#fff" : "rgba(0,0,0,.55)"; c.fillRect(x*S+w+14, y*S+3, bw+8, 2.9*S);
+    c.fillStyle = mono ? "#000" : "#fff"; c.fillText(badge, x*S+w+18, y*S+5);
+  }
+}
+function pos(L, who, t) {
+  const tr = track[who];
+  for (let i = 0; i < tr.length - 1; i++) {
+    const [t0, a] = tr[i], [t1, b] = tr[i+1];
+    if (t >= t0 && t < t1) {
+      const k = (t - t0) / (t1 - t0), A = L.pts[a], B = L.pts[b];
+      return { x: A[0] + (B[0]-A[0])*k, y: A[1] + (B[1]-A[1])*k, moving: a !== b };
+    }
+  }
+  const P = L.pts[tr[tr.length-1][1]]; return { x: P[0], y: P[1], moving: false };
+}
+function person(c, L, who, p, t) {
+  const pal = L.pal, x = Math.round(p.x) - 2, y = Math.round(p.y);
+  const step = p.moving ? Math.floor(t * 8) % 2 : 0;
+  fill(c, x, y-2-step, 1, 2+step, pal.mono ? "#fff" : "#333");
+  fill(c, x+3, y-3+step, 1, 3-step, pal.mono ? "#fff" : "#333");
+  fill(c, x, y-6, 4, 4, COL[who]);
+  fill(c, x, y-9, 4, 3, pal.skin);
+  fill(c, x, y-10, 4, 1, pal.mono ? COL[who] : pal.hair);
+  if (pal.mono) { fill(c, x+1, y-8, 1, 1, "#000"); fill(c, x+3, y-8, 1, 1, "#000"); }
+  if (who === "reel" && t >= 8.6 && t < 12.4) { fill(c, x+4, y-8, 4, 3, "#f7d354"); fill(c, x+5, y-7, 2, 1, "#c0392b"); }
+  if (who === "reel" && t >= 2.6 && t < 2.9) txt(c, "!", x+1, y-15, 3.2, "#f7d354");
+}
+function bubble(c, L, p, s) {
+  c.font = `bold ${2.6*S}px ui-monospace, Consolas, "Segoe UI Emoji", monospace`;
+  const w = c.measureText(s).width + 14, h = 2.6*S + 10;
+  let bx = p.x*S - w/2; bx = Math.max(4, Math.min(W*S - w - 4, bx));
+  const by = (p.y - 13)*S - h;
+  c.fillStyle = L.pal.bubble; c.fillRect(bx, by, w, h);
+  c.fillRect(p.x*S - 4, by + h, 8, 6);
+  c.strokeStyle = L.pal.bubbleLine || L.pal.bubbleInk; c.lineWidth = 2; c.strokeRect(bx, by, w, h);
+  c.fillStyle = L.pal.bubbleInk; c.textBaseline = "top"; c.fillText(s, bx + 7, by + 5);
+}
+function frame(now) {
+  const t = (now / 1000) % LOOP;
+  const step = steps.filter(s => s[0] <= t).pop()[1];
+  for (const id of ["A", "B", "C"]) {
+    const c = document.getElementById(id).getContext("2d"), L = layouts[id];
+    c.imageSmoothingEnabled = false;
+    L.draw(c, t);
+    const ps = {};
+    for (const who of ["plan", "bud", "reel", "you"]) { ps[who] = pos(L, who, t); person(c, L, who, ps[who], t); }
+    for (const [t0, t1, who, s] of bubbles) if (t >= t0 && t < t1) bubble(c, L, ps[who], s);
+    document.getElementById(id + "-step").textContent = "▶ " + step;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
