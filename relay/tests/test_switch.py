@@ -9,7 +9,7 @@ import pytest
 
 from relay.events import Mapper
 from relay.server import Hub, applications
-from relay.switch import Viewer, ViewerError, register
+from relay.switch import Viewer, ViewerError, post, register
 from conftest import domain, message, sse
 
 
@@ -17,6 +17,65 @@ def point_at(config, server):
     config.base_url = str(server.make_url("")).rstrip("/")
     config.api_key_path.write_text(json.dumps({"agent_id": "viewer-id", "api_key": "fake-test-key",
         "base_url": config.base_url, "agent_name": config.agent_name}))
+
+
+@pytest.mark.parametrize("override", [None, "override-room"])
+async def test_post_endpoint_headers_body_and_receipt(config, override):
+    requests = []
+    config.room_id = "default-room"
+    text = "@planner @budget Today's brief please"
+    async def receive(request):
+        assert request.method == "POST" and request.path == "/agents/viewer-id/message"
+        assert request.headers["Authorization"] == "Bearer fake-test-key"
+        assert request.content_type == "application/json"
+        requests.append(await request.json())
+        return web.json_response({"ok": True, "event_id": "brief-event"})
+    app = web.Application()
+    app.router.add_post("/agents/viewer-id/message", receive)
+    async with TestServer(app) as server:
+        point_at(config, server)
+        result = await post(config, text, override)
+    assert requests == [{"room_id": override or "default-room", "content": text}]
+    assert result == {"ok": True, "room_id": override or "default-room", "event_id": "brief-event"}
+
+
+@pytest.mark.parametrize("status", [301, 401, 403, 404, 422, 429, 500])
+async def test_post_http_failure_is_clear_and_does_not_echo_body(config, status):
+    async def receive(request):
+        return web.Response(status=status, text="fake-test-key must never be printed",
+                            headers={"Location": "/must-not-follow"})
+    app = web.Application()
+    app.router.add_post("/agents/viewer-id/message", receive)
+    async with TestServer(app) as server:
+        point_at(config, server)
+        with pytest.raises(ValueError, match=f"Switch post failed: HTTP {status}") as error:
+            await post(config, "@planner @budget brief", "room")
+        assert "fake-test-key" not in str(error.value)
+
+
+@pytest.mark.parametrize("receipt", [{}, {"ok": False}, {"ok": True, "event_id": ""}, [], "not JSON"])
+async def test_post_rejects_invalid_receipt_without_retry(config, receipt):
+    calls = []
+    async def receive(request):
+        calls.append(1)
+        return web.Response(text=receipt) if isinstance(receipt, str) else web.json_response(receipt)
+    app = web.Application()
+    app.router.add_post("/agents/viewer-id/message", receive)
+    async with TestServer(app) as server:
+        point_at(config, server)
+        with pytest.raises(ValueError, match="delivery unknown"):
+            await post(config, "brief", "room")
+    assert calls == [1]
+
+
+async def test_post_missing_room_key_and_empty_text(config):
+    with pytest.raises(ValueError, match="Room not set"):
+        await post(config, "brief")
+    with pytest.raises(ValueError, match="must not be empty"):
+        await post(config, "  ", "room")
+    config.api_key_path.unlink()
+    with pytest.raises(ValueError, match="Viewer key file is missing"):
+        await post(config, "brief", "room")
 
 
 async def test_fake_sse_to_websocket_reconnect_resume_and_beat(config):

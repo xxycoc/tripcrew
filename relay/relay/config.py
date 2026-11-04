@@ -13,6 +13,7 @@ class Config:
     base_url: str = "http://127.0.0.1:8000"
     agent_name: str = "custom.viewer.owner"
     agent_id: str = ""
+    room_id: str = ""
     api_key_path: Path = Path(".local/viewer.json")
     ws_port: int = 8770
     reel_port: int = 8771
@@ -28,6 +29,8 @@ class Config:
                      mentions=data.get("mentions", {}))
         result.api_key_path = path.resolve().parent / result.api_key_path
         result.base_url = result.base_url.rstrip("/")
+        if not isinstance(result.room_id, str) or (result.room_id and not result.room_id.strip()):
+            raise ValueError("switch.room_id must be a nonempty room ID when set")
         url = urlsplit(result.base_url)
         if url.scheme not in {"http", "https"} or not url.hostname or url.username or url.password or url.query or url.fragment:
             raise ValueError("switch.base_url must be an HTTP(S) bridge URL without credentials")
@@ -42,6 +45,8 @@ class Config:
         return result
 
     def credentials(self) -> tuple[str, str]:
+        if not self.api_key_path.is_file():
+            raise ValueError("Viewer key file is missing; configure api_key_path for the existing Viewer")
         data = json.loads(self.api_key_path.read_text(encoding="utf-8"))
         if data.get("base_url") != self.base_url or data.get("agent_name") != self.agent_name:
             raise ValueError("Credentials belong to another bridge or Viewer name")
