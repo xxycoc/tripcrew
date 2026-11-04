@@ -15,7 +15,7 @@ For **each** Console agent choose:
 - Bypass: **Off**.
 - Working directory: the corresponding folder above, not the repository root.
 
-The two `CLAUDE.md` files and Budget's `AGENTS.md` contain only `<!-- Dictated instructions go here. -->`. They are reserved for the owner's voice-dictated instructions. No standing persona or lane instructions were authored.
+The two `CLAUDE.md` files and Budget's `AGENTS.md` hold the owner's voice-dictated instructions (Wispr Flow), with only transcription slips corrected.
 
 ## Claude Code permissions
 
