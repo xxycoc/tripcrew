@@ -143,7 +143,7 @@ func run() -> void:
 	feed.enabled = true
 	feed.set_process(false)
 	feed.load_replay("res://dev/sample_events.jsonl")
-	check(feed.replay_events.size() == 24, "sample covers every event type and reel step")
+	check(feed.replay_events.size() == 29, "sample covers every event type and reel step")
 	for i in range(4200):
 		feed._process(1.0 / 60)
 		world.advance(1.0 / 60)

@@ -26,7 +26,7 @@ trip day N move WISHLIST_ID [--position N] [--to-day N]
 
 wishlist add --name NAME --area AREA --city CITY
              --category food|attraction|tip [--price-jpy AMOUNT]
-             [--hours HOURS] [--url SOURCE_URL] [--verified] [--note NOTE]
+             [--hours HOURS] [--url SOURCE_URL] [--verified] [--note NOTE] [--reel]
 wishlist list [--city CITY] [--category food|attraction|tip] [--unplanned]
 wishlist remove WISHLIST_ID
 
@@ -44,6 +44,8 @@ Planner owns itinerary edits and should use `trip show`, which omits prices in
 human output. Budget owns spending and prices and does not need to edit the
 itinerary. Reel Adder reads extraction JSON, verifies a place independently by
 web search, adds its sourced wishlist entry and then posts `reel identified`.
+For that sequence pass `wishlist add --reel` so only `reel identified` animates
+the place. An ordinary wishlist addition sends its own Reel Adder → Planner card.
 The CLI does not pretend that metadata or a machine transcript verifies a place.
 
 Days and positions start at 1. A move's position is the final position after
@@ -129,6 +131,16 @@ Events follow [the relay contract](../docs/events.md): `POST /reel` with `type`,
 `http://127.0.0.1:8771`. Each request has a one-second timeout; failure is silent.
 The CLI's explicit event commands report best-effort submission, not delivery.
 Fetch failures never post `failed`; that decision belongs to the agent.
+
+Successful trip dates/cities and day add/move send Planner → you cards; budget
+or category settings and recorded spending send Budget → you cards. These use
+`POST /activity` on the same relay URL, with the same one-second best-effort
+timeout. No activity is sent for reads, removals, interests alone or failed writes.
+Reusable hook: `from tripcrew import activity`, then
+`activity.post_event("budget", "planner", "delegated", "Day 2 is over budget")`.
+One call sends one contract `task` card; summaries are flattened and capped at
+80 characters. Use `finalised` for completed work, `delegated` for a handoff and
+`accepted` for taking it on. The returned payload is not a delivery receipt.
 
 ## Tests
 

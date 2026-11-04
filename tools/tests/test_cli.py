@@ -8,6 +8,7 @@ import pytest
 
 from tripcrew.cli import main
 from tripcrew.store import ROOT, Store
+from tripcrew.activity import post_event
 
 
 def place(call, name="Ramen", city="Osaka", category="food"):
@@ -115,3 +116,132 @@ def test_launcher_from_unrelated_directory(tmp_path):
     assert json.loads(result.stdout)["ok"] is True
     assert json.loads(result.stdout)["trip"] == {
         "start": None, "end": None, "cities": [], "budget_sgd": None, "interests": [], "days": {}}
+
+
+def test_write_activity_cards(call, activity_events):
+    call("trip", "set", "--start", "2026-12-10", "--end", "2026-12-16", "--cities", "Osaka", "Kyoto",
+         "--budget-sgd", "1500", "--categories", "flight=700", "other=800")
+    assert activity_events == [
+        {"type": "task", "from": "planner", "to": "you", "state": "finalised",
+         "summary": "Trip: 10–16 Dec, Osaka + Kyoto"},
+        {"type": "task", "from": "budget", "to": "you", "state": "finalised", "summary": "Budget S$1,500"}]
+    activity_events.clear()
+    stop = place(call, "Hiraoka Park")
+    assert activity_events == [{"type": "task", "from": "reel_adder", "to": "planner",
+                                "state": "delegated", "summary": "Hiraoka Park"}]
+    activity_events.clear()
+    call("trip", "day", "1", "add", stop)
+    call("trip", "day", "1", "move", stop, "--to-day", "2")
+    call("trip", "day", "2", "move", stop, "--position", "1")
+    call("spend", "add", "12.14", "SGD", "--note", "ramen", "--day", "2", "--category", "other")
+    assert activity_events == [
+        {"type": "task", "from": "planner", "to": "you", "state": "finalised", "summary": f"Day {day}: Hiraoka Park"}
+        for day in (1, 2, 2)] + [
+        {"type": "task", "from": "budget", "to": "you", "state": "finalised", "summary": "S$12.14 · ramen"}]
+    activity_events.clear()
+    call("trip", "set", "--categories", "flight=600", "other=900")
+    assert activity_events == [{"type": "task", "from": "budget", "to": "you",
+                                "state": "finalised", "summary": "Budget S$1,500"}]
+
+
+def test_reads_removals_and_failed_writes_do_not_post(call, demo_trip, activity_events, monkeypatch):
+    stop = place(call)
+    call("trip", "day", "1", "add", stop)
+    activity_events.clear()
+    call("trip", "show")
+    call("wishlist", "list")
+    call("spend", "list")
+    call("budget", "status")
+    call("trip", "set", "--interests", "food")
+    call("trip", "day", "1", "add", stop, ok=False)
+    call("trip", "set", "--budget-sgd", "-1", ok=False)
+    call("wishlist", "add", "--name", " ", "--city", "Osaka", "--area", "North", "--category", "tip", ok=False)
+    call("spend", "add", "-1", "SGD", "--note", "bad", ok=False)
+    call("trip", "day", "1", "remove", stop)
+    call("wishlist", "remove", stop)
+
+    def failed_write(*args):
+        raise OSError("disk unavailable")
+
+    monkeypatch.setattr(Store, "write", failed_write)
+    call("trip", "set", "--cities", "Tokyo", ok=False)
+    call("wishlist", "add", "--name", "Park", "--city", "Osaka", "--area", "North", "--category", "tip", ok=False)
+    call("spend", "add", "1", "SGD", "--note", "ramen", ok=False)
+    assert activity_events == []
+
+
+def test_reel_wishlist_has_only_identified_card(call, activity_events, monkeypatch):
+    reels = []
+    monkeypatch.setattr("tripcrew.reels.post_event", lambda step, **fields: reels.append({"step": step, **fields}))
+    call("wishlist", "add", "--name", "Park", "--area", "North", "--city", "Osaka", "--category", "tip", "--reel")
+    call("reel", "identified", "--place", "Park, North", "--platform", "instagram")
+    assert activity_events == []
+    assert reels == [{"step": "identified", "platform": "instagram", "place": "Park, North"}]
+
+
+def test_activity_poster_contract_and_silent_failure(monkeypatch, capsys):
+    from io import BytesIO
+
+    requests = []
+
+    def relay(request, timeout):
+        requests.append((request, timeout))
+        return BytesIO()
+
+    monkeypatch.delenv("TRIPCREW_RELAY_URL", raising=False)
+    monkeypatch.setattr("tripcrew.activity.urlopen", relay)
+    payload = post_event("budget", "planner", "delegated", " Day 2\n over budget " + "x" * 100)
+    request, timeout = requests[0]
+    assert request.full_url == "http://127.0.0.1:8771/activity"
+    assert request.get_method() == "POST" and timeout == 1
+    assert request.get_header("Content-type") == "application/json"
+    assert json.loads(request.data) == payload == {
+        "type": "task", "from": "budget", "to": "planner", "state": "delegated",
+        "summary": ("Day 2 over budget " + "x" * 100)[:80]}
+    monkeypatch.setenv("TRIPCREW_RELAY_URL", "http://relay.test:8771/")
+    post_event("budget", "you", "finalised", "S$12.14 · ramen")
+    assert requests[-1][0].full_url == "http://relay.test:8771/activity"
+
+    def offline(*args, **kwargs):
+        raise OSError("relay absent")
+
+    monkeypatch.setattr("tripcrew.activity.urlopen", offline)
+    assert post_event("planner", "you", "finalised", "Day 2: Park")["summary"] == "Day 2: Park"
+    monkeypatch.setenv("TRIPCREW_RELAY_URL", "invalid URL")
+    post_event("planner", "you", "finalised", "Day 2: Park")
+    output = capsys.readouterr()
+    assert output.out == output.err == ""
+
+
+def test_activity_offline_preserves_successful_write(call, monkeypatch):
+    def offline(*args, **kwargs):
+        raise TimeoutError("relay timed out")
+
+    monkeypatch.setattr("tripcrew.activity.post_event", post_event)
+    monkeypatch.setattr("tripcrew.activity.urlopen", offline)
+    call("trip", "set", "--budget-sgd", "0")
+    call("wishlist", "add", "--name", "Park", "--city", "Osaka", "--area", "North", "--category", "tip")
+    call("spend", "add", "12.14", "SGD", "--note", "ramen")
+    assert Store().read("trip")["budget_sgd"] == "0.00"
+    assert Store().read("wishlist")[0]["name"] == "Park"
+    assert Store().read("spend")[0]["amount_sgd"] == "12.14"
+
+
+def test_partial_trip_settings_and_jpy_card(call, activity_events):
+    from tripcrew import money
+
+    call("trip", "set", "--start", "2026-12-10")
+    call("trip", "set", "--cities", "Osaka")
+    call("trip", "set", "--budget-sgd", "0")
+    assert activity_events == [
+        {"type": "task", "from": "planner", "to": "you", "state": "finalised", "summary": summary}
+        for summary in ("Trip: 10 Dec", "Trip: 10 Dec, Osaka")] + [
+        {"type": "task", "from": "budget", "to": "you", "state": "finalised", "summary": "Budget S$0"}]
+    store = Store()
+    with store.transaction():
+        store.write("fx", {"base": "JPY", "quote": "SGD", "rate": "0.00809", "date": "2026-11-04",
+                           "fetched_at": money.timestamp().isoformat()})
+    activity_events.clear()
+    call("spend", "add", "1500", "JPY", "--note", "ramen")
+    assert activity_events == [{"type": "task", "from": "budget", "to": "you",
+                                "state": "finalised", "summary": "S$12.14 · ramen"}]
