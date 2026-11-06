@@ -71,8 +71,12 @@ def meaningful_words(caption):
 def speech_to_text(path, language=None):
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(os.environ.get("TRIPCREW_WHISPER_MODEL", "small"),
-                         device="cpu", compute_type="int8")
+    name = os.environ.get("TRIPCREW_WHISPER_MODEL", "small")
+    # Use the cached model first: the online check crashes behind the Codex sandbox's SOCKS proxy.
+    try:
+        model = WhisperModel(name, device="cpu", compute_type="int8", local_files_only=True)
+    except Exception:
+        model = WhisperModel(name, device="cpu", compute_type="int8")
     segments, _ = model.transcribe(str(path), **({"language": language} if language else {}))
     return " ".join(segment.text.strip() for segment in segments).strip()
 
