@@ -16,8 +16,12 @@ add `room_id = "YOUR_SWITCH_ROOM_ID"`. Use the room's Switch ID from the room
 details in the dashboard, not Telegram's chat ID. The Viewer must already belong
 to that room; `planner` and `budget` must be its agents' room aliases.
 
-The Viewer, Planner and Budget must have the same Switch owner for **Only me and
-my agents** to admit this request. A custom connector with an `always_on` profile
+In Switch Console, open **Agent settings** for Planner and Budget and set
+**Who can talk to your agent** to **Anyone**. The Viewer is not counted as an
+agent you own. With **Only me and my agents**, Switch accepts the post but logs
+`Addressing denied`; Planner and Budget never receive the request.
+
+A custom connector with an `always_on` profile
 and `message_exchange=false` can post using its existing API key. No registration
 or profile change is needed on the checked-out Switch server. Posting still
 requires room membership and is subject to Switch's spending and trust checks.
@@ -104,8 +108,8 @@ agent API key; it calls `AgentCore.send_message` directly. No SSE connection or
 room claim is required. The operation alternative `post_message` depends on a
 connected room, so this one-shot command uses the direct message endpoint.
 `message_exchange` is profile information, not a posting gate on this path.
-The addressing policy's `owner_agents` rule admits a sender whose owner matches
-the target's owner; room aliases provide the explicit mentions.
+Room aliases provide the explicit mentions. The live Viewer did not qualify for
+the addressing policy's `owner_agents` rule; use **Anyone** as described above.
 
 See the official [agent protocol](https://docs.switchagents.ai/flintai/switch/internals/agent-protocol),
 [identity and access](https://docs.switchagents.ai/flintai/switch/internals/identity-and-access),

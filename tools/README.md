@@ -20,7 +20,7 @@ trip show
 trip map [N]
 trip set [--start YYYY-MM-DD] [--end YYYY-MM-DD]
          [--cities Osaka Kyoto] [--budget-sgd 1500] [--interests food temples]
-         [--categories flight=700 other=800]
+         [--categories flight=700 other=800] [--people NAME ...]
 trip day N add WISHLIST_ID [--position N]
 trip day N remove WISHLIST_ID
 trip day N move WISHLIST_ID [--position N] [--to-day N]
@@ -33,10 +33,13 @@ wishlist remove WISHLIST_ID
 wishlist price WISHLIST_ID --price-jpy AMOUNT|unknown --source-note NOTE
 
 spend add AMOUNT JPY|SGD --note NOTE [--day N] [--category NAME] [--receipt PATH]
+          [--paid-by NAME] [--split NAME ...]
 spend list
+spend balances
 budget status [--day N]
 budget check [--day N]
 fx convert AMOUNT JPY|SGD JPY|SGD
+transcribe PATH [--language CODE]
 
 reel fetch URL [--audio]
 reel identified --place "Name, area" [--platform tiktok|instagram]
@@ -81,7 +84,8 @@ waypoints when unsupported; phone routing and place matches require live review.
 
 `trip show` explains that no trip is set yet and lists the `trip set` flags.
 Settings can be supplied together or incrementally, including one date at a
-time. Both dates are required before `trip day` or `spend add` can proceed.
+time. Both dates are required before `trip day` or `spend add --day N` can proceed.
+Omit `--day` to record pre-trip spending without dates.
 `budget status`, including `--day`, requires both dates and a budget and explains
 which settings are missing instead of calculating assumed amounts. A zero
 budget is valid. Blocked actions exit 1; `--json` returns `ok: false` with a
@@ -144,6 +148,34 @@ source stays in place. Failed recording removes the new copy; invalid spending,
 an invalid image or failed FX never leaves a receipt copy. Omit `--receipt` for
 ordinary spending; old entries without the field still list normally. These
 files remain under the ignored state directory, including with `TRIPCREW_STATE`.
+
+### Group splits
+
+`trip set --people NAME ...` replaces the people sharing costs, preserving other
+settings. Quote multiword names. `spend add ... --paid-by NAME` splits the booked
+SGD amount evenly among all listed people; `--split NAME ...` selects the sharers
+and requires `--paid-by`. Payer and sharers must be on the trip; matching ignores
+case. Duplicate sharers count once. Remainder cents go to the first names in the
+split order. The trip budget counts the full expense, not one person's share.
+
+`spend balances` reads saved expenses and suggests SGD transfers to settle up;
+it does not record payments. JSON returns `people` (`name`, `paid_sgd`,
+`share_sgd`, `net_sgd`), `transfers` (`from`, `to`, `amount_sgd`) and
+`unsplit_count`. Expenses without a payer are excluded from balances and counted
+as unsplit. Changing the trip's people does not rewrite existing expense shares.
+
+### Voice transcription
+
+`transcribe PATH` reads a local audio file with faster-whisper on CPU/int8;
+audio is not uploaded. `--language CODE` sets the spoken language, default `en`.
+It prints the transcript, or `ok` and `transcript` with `--json`. A missing file
+or no recognized speech fails. The source file is preserved. Transcription does
+not record spending: check the amount and currency before using `spend add`.
+
+The model defaults to `small`, overridden with `TRIPCREW_WHISPER_MODEL`. It tries
+cached weights first and may download them if unavailable; prepare the model
+before running under a network restriction. This command does not download
+Telegram attachments; the agent obtains the local file through Switch first.
 
 ## State and money
 

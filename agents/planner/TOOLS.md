@@ -8,7 +8,7 @@ Run from `agents/planner/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh
 | --- | --- | --- |
 | `trip show` | none | Read dates, cities, interests and ordered stops. |
 | `trip map` | optional day `N` | Read one Google Maps link per planned day, or just day N; JSON includes the stops used. |
-| `trip set` | `--start YYYY-MM-DD`, `--end YYYY-MM-DD`, `--cities CITY [CITY ...]`, `--interests INTEREST [INTEREST ...]` | Replace supplied itinerary settings; preserve omitted fields. The budget flag is excluded. |
+| `trip set` | `--start YYYY-MM-DD`, `--end YYYY-MM-DD`, `--cities CITY [CITY ...]`, `--interests INTEREST [INTEREST ...]`, `--people NAME ...` | Replace supplied trip settings; preserve omitted fields. People name the cost sharers; Budget records splits. The budget flag is excluded. |
 | `wishlist list` | `--city CITY`, `--category food\|attraction\|tip`, `--unplanned` | Read places, source URLs and opening hours; optionally filter unplanned entries. |
 | `trip day N add ID` | `--position N` | Add an existing wishlist place; default append. |
 | `trip day N remove ID` | none | Remove a stop from that day, retaining its wishlist entry. |

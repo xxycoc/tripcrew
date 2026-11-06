@@ -15,7 +15,7 @@ Run from `agents/budget/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh 
 | `budget status` | `--day N` | Show total, per-category (with `used_percent` and an 80% `warning`) and daily spending; day filter retains trip totals and categories. |
 | `budget check` | `--day N` | Compare planned estimates plus booked daily spending against the evenly split non-flight allowance; omit day for all planned days. |
 | `fx convert AMOUNT JPY\|SGD JPY\|SGD` | none | Convert using live or explicitly labelled cached FX. |
-| `transcribe PATH` | none | Turn a downloaded voice message into text on this machine; `--json` gives `transcript`. |
+| `transcribe PATH` | `--language CODE` (default `en`) | Turn a local audio file into text on CPU without uploading audio; `--json` gives `transcript`. Does not record spending. |
 
 ## Windows examples
 
@@ -109,6 +109,12 @@ and the CLI writes only the retained copy into shared `state/receipts/`.
 
 Ask who paid if the message doesn't say. Shares are even and in SGD at the rate booked with the expense; leftover cents go to the first names. To split unevenly, log separate expenses. The trip budget counts the full amount, not one person's share.
 
+`--split NAME ...` needs `--paid-by`; omit it to share among everyone in
+`--people`. Payer and sharers must be listed on the trip. `spend balances`
+suggests transfers without recording payments; expenses with no payer are
+counted as unsplit and excluded from balances. Replacing `--people` leaves
+existing expense shares unchanged.
+
 ```powershell
 ..\..\bin\tripcrew.cmd trip set --people Woo Ana Ben
 ..\..\bin\tripcrew.cmd spend add 4137 JPY --receipt "<downloaded-file>.jpg" --note "Shop name" --day 2 --category other --paid-by Woo
@@ -118,7 +124,7 @@ Ask who paid if the message doesn't say. Shares are even and in SGD at the rate 
 ## Log a voice message
 
 1. Take the attachment's `mxc` and `filename` (usually `voice.ogg`) from the Switch message or `read_context`, and call Switch's `download_attachment`.
-2. Run `transcribe` on the returned path. The first run takes a few seconds.
+2. Run `transcribe` on the returned path. It defaults to English (`en`); pass `--language CODE` for another spoken language. It tries cached model weights first and may download them if missing, so prepare the model before using a restricted network.
 3. Log the amount, currency and item from the transcript with `spend add`, then repeat them in your reply so the owner can catch a mishearing. Names of foods and places are the likeliest to be wrong: fix an obvious one and say so. If the amount or currency is unclear, ask and don't log.
 
 ```powershell

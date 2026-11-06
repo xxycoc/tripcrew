@@ -5,17 +5,37 @@ Switch Console starts each provider in its own folder. Replace `<owner>` with th
 | Agent | Folder | Provider | Suggested Switch name | Alias | Tool reference |
 | --- | --- | --- | --- | --- | --- |
 | Planner | `agents/planner` | Claude Code | `claude-code.tripcrew-planner.<owner>` | `planner` | [TOOLS.md](../agents/planner/TOOLS.md): trip settings excluding budget, ordered itinerary stops, wishlist reads. |
-| Budget | `agents/budget` | Codex | `codex.tripcrew-budget.<owner>` | `budget` | [TOOLS.md](../agents/budget/TOOLS.md): budget-only setting, prices, expense recording, budget status and JPY/SGD FX; trip/wishlist reads. |
+| Budget | `agents/budget` | Codex | `codex.tripcrew-budget.<owner>` | `budget` | [TOOLS.md](../agents/budget/TOOLS.md): budget and people settings, prices, expenses and group balances, local voice transcription, budget status and JPY/SGD FX; trip/wishlist reads. |
 | Reel Adder | `agents/reel-adder` | Claude Code | `claude-code.tripcrew-reel-adder.<owner>` | `reel` | [TOOLS.md](../agents/reel-adder/TOOLS.md): extraction, source verification, wishlist addition and relay outcome events; trip/wishlist reads. |
 
 For **each** Console agent choose:
 
-- Who can talk: **Only me and my agents**.
+- Who can talk to your agent: **Anyone** for Planner and Budget when using the [morning brief](morning-brief.md); **Only me and my agents** otherwise.
 - Auto mode: **On**.
 - Bypass: **Off**.
 - Working directory: the corresponding folder above, not the repository root.
 
 The two `CLAUDE.md` files and Budget's `AGENTS.md` hold the owner's voice-dictated instructions (Wispr Flow), with only transcription slips corrected.
+
+The Viewer is not counted as an agent you own. Without **Anyone**, Switch can
+accept its brief post but log `Addressing denied`, so Planner and Budget never
+receive the request.
+
+## Group costs and voice messages
+
+Budget uses `trip set --people NAME ...` to replace the people sharing costs.
+`spend add AMOUNT JPY|SGD --note NOTE --paid-by NAME` splits the booked SGD amount
+evenly among those people; `--split NAME ...` selects a subset and requires
+`--paid-by`. Payer and sharers must be on the trip. `spend balances` shows paid
+amounts, shares and suggested SGD transfers; expenses without a payer are counted
+as unsplit and excluded from balances. The trip budget still counts each full
+expense.
+
+`transcribe PATH [--language CODE]` turns a local audio file into text on CPU.
+The language defaults to `en`; `--json` returns `transcript`. It does not log an
+expense: Budget checks the transcript, asks about unclear amounts or currencies,
+then uses `spend add`. The first use may download model weights. See the
+[Budget reference](../agents/budget/TOOLS.md) for attachment handling and examples.
 
 ## Claude Code permissions
 

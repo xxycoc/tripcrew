@@ -54,6 +54,10 @@ then **Add to room** and choose the TripCrew room. The channel alternative is
 The relay itself never sends that command. Live mode makes no operation calls,
 claims no rooms, and only posts connection heartbeats to Switch. The separate
 [morning brief command](morning-brief.md) can post a message as this same Viewer.
+For that brief, set Planner and Budget's **Who can talk to your agent** to
+**Anyone** in Console's **Agent settings**. The Viewer is not counted as an agent
+you own; otherwise Switch accepts the post but logs `Addressing denied` and the
+agents never receive it.
 
 The Viewer opens SSE with `scope=all&filter=all`, starts at `head`, keeps a UUID
 across reconnects, reads the server heartbeat interval, and beats with its cursor
