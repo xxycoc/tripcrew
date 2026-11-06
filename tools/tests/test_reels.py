@@ -87,7 +87,7 @@ def test_audio_forced_or_automatic_and_cleaned(call, fake, monkeypatch, forced, 
     monkeypatch.setenv("TRIPCREW_WHISPER_MODEL", "tiny")
     result = call("reel", "fetch", "https://www.instagram.com/reel/abc/", *(["--audio"] if forced else []))
     assert result["transcript"] == "Visit Osaka station."
-    assert fake.whisper == ("tiny", {"device": "cpu", "compute_type": "int8"})
+    assert fake.whisper == ("tiny", {"device": "cpu", "compute_type": "int8", "local_files_only": True})
     assert len(fake.downloads) == 1
     assert not Path(fake.downloads[0]).parent.exists()
 
