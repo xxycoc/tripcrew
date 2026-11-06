@@ -109,7 +109,7 @@ and the CLI writes only the retained copy into shared `state/receipts/`.
 Ask who paid if the message doesn't say. Shares are even and in SGD at the rate booked with the expense; leftover cents go to the first names. To split unevenly, log separate expenses. The trip budget counts the full amount, not one person's share.
 
 ```powershell
-..\..in	ripcrew.cmd trip set --people Woo Ana Ben
-..\..in	ripcrew.cmd spend add 4137 JPY --receipt "<downloaded-file>.jpg" --note "Shop name" --day 2 --category other --paid-by Woo
-..\..in	ripcrew.cmd spend balances
+..\..\bin\tripcrew.cmd trip set --people Woo Ana Ben
+..\..\bin\tripcrew.cmd spend add 4137 JPY --receipt "<downloaded-file>.jpg" --note "Shop name" --day 2 --category other --paid-by Woo
+..\..\bin\tripcrew.cmd spend balances
 ```
