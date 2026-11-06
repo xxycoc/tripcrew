@@ -1,6 +1,6 @@
 import argparse
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 import json
 import sys
 from urllib.parse import urlencode
@@ -38,6 +38,7 @@ def parser():
     setting.add_argument("--cities", nargs="+", help="Replace cities; quote multiword names.")
     setting.add_argument("--budget-sgd", help="Total SGD budget, at most two decimal places.")
     setting.add_argument("--interests", nargs="+", help="Replace interests; quote multiword interests.")
+    setting.add_argument("--people", nargs="+", help="Replace who shares costs on this trip; quote multiword names.")
     setting.add_argument("--categories", nargs="+", metavar="NAME=AMOUNT",
                          help="Replace SGD budget categories, e.g. flight=700 other=800; "
                               "amounts must add up to the total budget.")
@@ -88,7 +89,10 @@ def parser():
     add.add_argument("--day", type=int, help="Trip day; omit for spending before the trip, such as flights.")
     add.add_argument("--category", help="Budget category; required once categories are set.")
     add.add_argument("--receipt", help="Local receipt image to copy into state/receipts/ when recorded (max 10 MiB).")
+    add.add_argument("--paid-by", help="Who paid; must be in trip set --people.")
+    add.add_argument("--split", nargs="+", help="Who shares it evenly; needs --paid-by. Defaults to everyone in --people.")
     commands.add_parser("list", help="List expenses with original currency and booked SGD amounts.")
+    commands.add_parser("balances", help="Read who paid, each person's share, and who pays whom in SGD to settle up.")
 
     budget = groups.add_parser("budget", help="Budget and actual spending in SGD; does not edit itinerary.")
     commands = budget.add_subparsers(dest="action", required=True)
@@ -168,7 +172,9 @@ def spend_line(item):
     original = f" (JPY {item['amount']})" if item["currency"] == "JPY" else ""
     when = "Before trip" if item["day"] is None else f"Day {item['day']}"
     category = f" [{item['category']}]" if item.get("category") else ""
+    shares = ", ".join(f"{name} {share}" for name, share in item.get("split", {}).items())
     return (f"*{item['id']}* {when}{category}: SGD {item['amount_sgd']}{original}; {text(item['note'])}"
+            + (f"; paid by {item['paid_by']}, split {shares}" if item.get("paid_by") else "")
             + (f"; receipt: {item['receipt']}" if item.get("receipt") else ""))
 
 
@@ -235,10 +241,10 @@ def trip_command(args, store):
         if args.action == "map":
             return map_days(trip, wishlist, args.day)
         if args.action == "set":
-            supplied = [args.start, args.end, args.cities, args.budget_sgd, args.interests, args.categories]
+            supplied = [args.start, args.end, args.cities, args.budget_sgd, args.interests, args.categories, args.people]
             if all(value is None for value in supplied):
                 raise ValueError("Supply at least one trip setting; see trip set --help.")
-            for key in ("start", "end", "cities", "interests"):
+            for key in ("start", "end", "cities", "interests", "people"):
                 value = getattr(args, key)
                 if value is not None:
                     if key in ("start", "end"):
@@ -376,11 +382,61 @@ def wishlist_command(args, store):
     return {"wishlist": entries}, [wishlist_line(item) for item in entries] or ["*Wishlist* empty"]
 
 
+def person(trip, name):
+    for known in trip.get("people") or []:
+        if known.casefold() == name.strip().casefold():
+            return known
+    raise ValueError(f"{name} is not on this trip; set people with trip set --people.")
+
+
+def even_shares(total, names):
+    each = (total / len(names)).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    # Leftover cents go to the first names so the shares always add up to the total.
+    extra = int((total - each * len(names)) * 100)
+    return {name: str(each + Decimal("0.01") * (index < extra)) for index, name in enumerate(names)}
+
+
+def balances(entries):
+    paid, owed = {}, {}
+    for item in entries:
+        if item.get("paid_by"):
+            paid[item["paid_by"]] = paid.get(item["paid_by"], Decimal(0)) + Decimal(item["amount_sgd"])
+            for name, share in item["split"].items():
+                owed[name] = owed.get(name, Decimal(0)) + Decimal(share)
+    names = sorted({*paid, *owed})
+    net = {name: paid.get(name, Decimal(0)) - owed.get(name, Decimal(0)) for name in names}
+    people = [{"name": name, "paid_sgd": str(money.cents(paid.get(name, 0))), "share_sgd": str(money.cents(owed.get(name, 0))),
+               "net_sgd": str(money.cents(net[name]))} for name in names]
+    transfers = []
+    creditors = sorted(((amount, name) for name, amount in net.items() if amount > 0), key=lambda pair: (-pair[0], pair[1]))
+    debtors = sorted(((-amount, name) for name, amount in net.items() if amount < 0), key=lambda pair: (-pair[0], pair[1]))
+    while creditors and debtors:
+        (credit, to), (debt, source) = creditors[0], debtors[0]
+        amount = min(credit, debt)
+        transfers.append({"from": source, "to": to, "amount_sgd": str(money.cents(amount))})
+        creditors = [(credit - amount, to)] * (credit > amount) + creditors[1:]
+        debtors = [(debt - amount, source)] * (debt > amount) + debtors[1:]
+    return people, transfers
+
+
 def spend_command(args, store):
     if args.action == "list":
         with store.transaction():
             entries = store.read("spend")
         return {"spend": entries}, [spend_line(item) for item in entries] or ["*Spend* no expenses"]
+    if args.action == "balances":
+        with store.transaction():
+            entries = store.read("spend")
+        people, transfers = balances(entries)
+        unsplit = sum(not item.get("paid_by") for item in entries)
+        lines = [f"*{item['name']}* paid SGD {item['paid_sgd']}; share SGD {item['share_sgd']}" for item in people]
+        lines += [f"*Settle* {item['from']} pays {item['to']} SGD {item['amount_sgd']}" for item in transfers]
+        if unsplit:
+            lines.append(f"*Not split* {unsplit} expense(s) have no payer")
+        return ({"people": people, "transfers": transfers, "unsplit_count": unsplit},
+                lines or ["*Balances* nothing to settle"])
+    if args.split and not args.paid_by:
+        raise ValueError("--split needs --paid-by.")
     amount = money.number(args.amount, positive=True)
     if args.currency == "SGD" and money.cents(amount) != amount:
         raise ValueError("SGD spending must have at most two decimal places.")
@@ -396,17 +452,24 @@ def spend_command(args, store):
             raise ValueError("Pick a budget category with --category: " + ", ".join(categories) + ".")
         if not categories and category:
             raise ValueError("No budget categories are set; omit --category or set them with trip set --categories.")
+        if not args.paid_by:
+            return None, []
+        names = [person(trip, name) for name in args.split or trip.get("people") or []]
+        return person(trip, args.paid_by), list(dict.fromkeys(names))
 
     with store.transaction():
         check(store.read("trip"))
     receipt = receipts.load(args.receipt) if args.receipt else None
     conversion = money.convert(store, amount, args.currency, "SGD")
     with store.transaction():
-        check(store.read("trip"))
+        payer, sharers = check(store.read("trip"))
         entries = store.read("spend")
         item = {"id": new_id("s_", entries), "amount": str(amount), "currency": args.currency,
                 "amount_sgd": conversion["converted"], "note": args.note, "day": args.day, "category": category,
                 "fx": conversion["fx"], "created_at": money.timestamp().isoformat()}
+        if payer:
+            item["paid_by"] = payer
+            item["split"] = even_shares(Decimal(item["amount_sgd"]), sharers)
         entries.append(item)
         saved = None
         try:

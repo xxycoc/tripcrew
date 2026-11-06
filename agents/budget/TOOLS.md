@@ -8,8 +8,10 @@ Run from `agents/budget/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh 
 | `trip set --budget-sgd AMOUNT` | `--categories NAME=AMOUNT ...` | Set the total budget in SGD and optional categories that add up to it, preserving itinerary fields. |
 | `wishlist list` | `--city CITY`, `--category food\|attraction\|tip`, `--unplanned` | Read saved estimated JPY prices and verification/source metadata. |
 | `wishlist price ID` | required `--price-jpy AMOUNT\|unknown`, `--source-note NOTE` | Set or update Budget's JPY estimate and its short source note; `0` is free, `unknown` clears it. |
-| `spend add AMOUNT JPY\|SGD` | required `--note NOTE`; `--day N` (omit for pre-trip costs such as flights); `--category NAME` (required once categories are set); `--receipt PATH` | Record an expense and booked SGD amount; optionally copy a validated receipt image. |
+| `spend add AMOUNT JPY\|SGD` | required `--note NOTE`; `--day N` (omit for pre-trip costs such as flights); `--category NAME` (required once categories are set); `--receipt PATH`; `--paid-by NAME`; `--split NAME ...` (even shares; defaults to everyone in `--people`) | Record an expense and booked SGD amount; optionally copy a validated receipt image. |
+| `trip set --people NAME ...` | none | Replace who shares costs on this trip; names must be listed here before a spend can be split. |
 | `spend list` | none | Read expenses, original currency and booked SGD amounts. |
+| `spend balances` | none | Read what each person paid, their share and who pays whom in SGD to settle up. |
 | `budget status` | `--day N` | Show total, per-category (with `used_percent` and an 80% `warning`) and daily spending; day filter retains trip totals and categories. |
 | `budget check` | `--day N` | Compare planned estimates plus booked daily spending against the evenly split non-flight allowance; omit day for all planned days. |
 | `fx convert AMOUNT JPY\|SGD JPY\|SGD` | none | Convert using live or explicitly labelled cached FX. |
@@ -101,3 +103,13 @@ file is preserved; `spend list` shows `receipts/<spend-id>.<extension>` relative
 to shared `state/`. This path is recorded with the spend, not as a separate
 wishlist price. Downloads are local files written by Switch; Codex reads them
 and the CLI writes only the retained copy into shared `state/receipts/`.
+
+## Split a group expense
+
+Ask who paid if the message doesn't say. Shares are even and in SGD at the rate booked with the expense; leftover cents go to the first names. To split unevenly, log separate expenses. The trip budget counts the full amount, not one person's share.
+
+```powershell
+..\..in	ripcrew.cmd trip set --people Woo Ana Ben
+..\..in	ripcrew.cmd spend add 4137 JPY --receipt "<downloaded-file>.jpg" --note "Shop name" --day 2 --category other --paid-by Woo
+..\..in	ripcrew.cmd spend balances
+```

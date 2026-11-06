@@ -536,3 +536,27 @@ def test_partial_trip_settings_and_jpy_card(call, activity_events):
     call("spend", "add", "1500", "JPY", "--note", "ramen")
     assert activity_events == [{"type": "task", "from": "budget", "to": "you",
                                 "state": "finalised", "summary": "S$12.14 · ramen"}]
+
+
+def test_group_split_is_exact_and_settles_up(call, demo_trip):
+    call("trip", "set", "--people", "Woo", "Ana", "Ben")
+    dinner = call("spend", "add", "100", "SGD", "--note", "Dinner", "--day", "2", "--paid-by", "woo")["item"]
+    assert dinner["paid_by"] == "Woo"
+    assert dinner["split"] == {"Woo": "33.34", "Ana": "33.33", "Ben": "33.33"}
+    call("spend", "add", "30", "SGD", "--note", "Taxi", "--day", "2", "--paid-by", "Ana", "--split", "Ana", "Ben")
+    result = call("spend", "balances")
+    assert {item["name"]: item["net_sgd"] for item in result["people"]} == {"Woo": "66.66", "Ana": "-18.33", "Ben": "-48.33"}
+    assert result["transfers"] == [{"from": "Ben", "to": "Woo", "amount_sgd": "48.33"},
+                                   {"from": "Ana", "to": "Woo", "amount_sgd": "18.33"}]
+    assert result["unsplit_count"] == 0
+
+
+def test_split_rejects_unknown_people_and_counts_unsplit_spend(call, demo_trip):
+    call("spend", "add", "5", "SGD", "--note", "Snack", "--day", "1")
+    assert call("spend", "balances") == {"ok": True, "people": [], "transfers": [], "unsplit_count": 1}
+    assert not call("spend", "add", "5", "SGD", "--note", "X", "--paid-by", "Woo", ok=False)["ok"]
+    call("trip", "set", "--people", "Woo", "Ana")
+    assert not call("spend", "add", "5", "SGD", "--note", "X", "--paid-by", "Zed", ok=False)["ok"]
+    assert not call("spend", "add", "5", "SGD", "--note", "X", "--paid-by", "Woo", "--split", "Zed", ok=False)["ok"]
+    assert not call("spend", "add", "5", "SGD", "--note", "X", "--split", "Woo", ok=False)["ok"]
+    assert len(call("spend", "list")["spend"]) == 1
