@@ -124,3 +124,9 @@ Ask who paid if the message doesn't say. Shares are even and in SGD at the rate 
 ```powershell
 ..\..\bin\tripcrew.cmd transcribe "<downloaded-file>.ogg" --json
 ```
+
+## Solo or group trip
+
+If `trip show --json` lists `people`, it's a group trip with its own budget; with no people, it's solo and nothing is split. On a group trip, a place's price on the wishlist and in `budget check` covers the whole group: multiply a per-person price by the number of people and say so in `--source-note`. Log a group expense with `--paid-by`, and when the owner asks who owes what, run `spend balances` and show the result.
+
+A voice message or receipt photo may arrive with no text. Treat a voice message about money as a spend to log.
