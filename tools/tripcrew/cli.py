@@ -2,6 +2,7 @@ import argparse
 from datetime import date
 from decimal import Decimal, ROUND_DOWN
 import json
+from pathlib import Path
 import sys
 from urllib.parse import urlencode
 from uuid import uuid4
@@ -107,6 +108,9 @@ def parser():
     conversion.add_argument("amount")
     conversion.add_argument("source", type=str.upper, choices=["JPY", "SGD"])
     conversion.add_argument("target", type=str.upper, choices=["JPY", "SGD"])
+
+    transcribe = groups.add_parser("transcribe", help="Turn a local voice message or audio file into text; CPU only, nothing is uploaded.")
+    transcribe.add_argument("path")
 
     reel = groups.add_parser("reel", help="Extract metadata, then let the agent verify the place by web search.")
     commands = reel.add_subparsers(dest="action", required=True)
@@ -601,8 +605,18 @@ def dispatch(args):
     if args.group == "fx":
         data = money.convert(store, args.amount, args.source, args.target)
         return data, [f"*FX* {data['amount']} {data['from']} = {data['converted']} {data['to']}", *fx_lines(data["fx"])]
-    return {"trip": trip_command, "wishlist": wishlist_command, "spend": spend_command,
+    return {"trip": trip_command, "wishlist": wishlist_command, "spend": spend_command, "transcribe": transcribe_command,
             "budget": budget_command}[args.group](args, store)
+
+
+def transcribe_command(args, store):
+    path = Path(args.path)
+    if not path.is_file():
+        raise ValueError("Audio file not found.")
+    transcript = reels.speech_to_text(path)
+    if not transcript:
+        raise ValueError("No speech found in that audio.")
+    return {"transcript": transcript}, [transcript]
 
 
 def main(argv=None):

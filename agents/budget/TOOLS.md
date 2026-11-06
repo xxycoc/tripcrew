@@ -15,6 +15,7 @@ Run from `agents/budget/`. Windows PowerShell uses `..\..\bin\tripcrew.cmd`; sh 
 | `budget status` | `--day N` | Show total, per-category (with `used_percent` and an 80% `warning`) and daily spending; day filter retains trip totals and categories. |
 | `budget check` | `--day N` | Compare planned estimates plus booked daily spending against the evenly split non-flight allowance; omit day for all planned days. |
 | `fx convert AMOUNT JPY\|SGD JPY\|SGD` | none | Convert using live or explicitly labelled cached FX. |
+| `transcribe PATH` | none | Turn a downloaded voice message into text on this machine; `--json` gives `transcript`. |
 
 ## Windows examples
 
@@ -112,4 +113,14 @@ Ask who paid if the message doesn't say. Shares are even and in SGD at the rate 
 ..\..\bin\tripcrew.cmd trip set --people Woo Ana Ben
 ..\..\bin\tripcrew.cmd spend add 4137 JPY --receipt "<downloaded-file>.jpg" --note "Shop name" --day 2 --category other --paid-by Woo
 ..\..\bin\tripcrew.cmd spend balances
+```
+
+## Log a voice message
+
+1. Take the attachment's `mxc` and `filename` (usually `voice.ogg`) from the Switch message or `read_context`, and call Switch's `download_attachment`.
+2. Run `transcribe` on the returned path. The first run takes a few seconds.
+3. Log the amount, currency and item from the transcript with `spend add`, then repeat them in your reply so the owner can catch a mishearing. Names of foods and places are the likeliest to be wrong: fix an obvious one and say so. If the amount or currency is unclear, ask and don't log.
+
+```powershell
+..\..\bin\tripcrew.cmd transcribe "<downloaded-file>.ogg" --json
 ```

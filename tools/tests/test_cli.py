@@ -560,3 +560,14 @@ def test_split_rejects_unknown_people_and_counts_unsplit_spend(call, demo_trip):
     assert not call("spend", "add", "5", "SGD", "--note", "X", "--paid-by", "Woo", "--split", "Zed", ok=False)["ok"]
     assert not call("spend", "add", "5", "SGD", "--note", "X", "--split", "Woo", ok=False)["ok"]
     assert len(call("spend", "list")["spend"]) == 1
+
+
+def test_transcribe_returns_text_and_rejects_missing_or_silent_audio(call, tmp_path, monkeypatch):
+    from tripcrew import reels
+    voice = tmp_path / "voice.ogg"
+    voice.write_bytes(b"audio")
+    monkeypatch.setattr(reels, "speech_to_text", lambda path: "Wagyu beef 3000 yen")
+    assert call("transcribe", str(voice))["transcript"] == "Wagyu beef 3000 yen"
+    assert "not found" in call("transcribe", str(tmp_path / "missing.ogg"), ok=False)["reason"]
+    monkeypatch.setattr(reels, "speech_to_text", lambda path: "")
+    assert "No speech" in call("transcribe", str(voice), ok=False)["reason"]

@@ -68,10 +68,17 @@ def meaningful_words(caption):
     return [word for word in re.findall(r"[^\W_]+", text, flags=re.UNICODE) if len(word) > 1]
 
 
-def transcribe(url, opts):
-    import yt_dlp
+def speech_to_text(path):
     from faster_whisper import WhisperModel
 
+    model = WhisperModel(os.environ.get("TRIPCREW_WHISPER_MODEL", "small"),
+                         device="cpu", compute_type="int8")
+    segments, _ = model.transcribe(str(path))
+    return " ".join(segment.text.strip() for segment in segments).strip()
+
+
+def transcribe(url, opts):
+    import yt_dlp
     with tempfile.TemporaryDirectory(prefix="tripcrew-audio-") as folder:
         audio_opts = {**opts, "format": "bestaudio", "skip_download": False,
                       "outtmpl": str(Path(folder) / "audio.%(ext)s")}
@@ -80,10 +87,7 @@ def transcribe(url, opts):
             audio_path = Path(downloader.prepare_filename(info))
         if not audio_path.is_file() or not audio_path.resolve().is_relative_to(Path(folder).resolve()):
             raise ValueError("Audio download did not produce a temporary audio file.")
-        model = WhisperModel(os.environ.get("TRIPCREW_WHISPER_MODEL", "small"),
-                             device="cpu", compute_type="int8")
-        segments, _ = model.transcribe(str(audio_path))
-        return " ".join(segment.text.strip() for segment in segments).strip()
+        return speech_to_text(audio_path)
 
 
 def fetch(url, audio=False):
