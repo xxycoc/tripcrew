@@ -68,12 +68,12 @@ def meaningful_words(caption):
     return [word for word in re.findall(r"[^\W_]+", text, flags=re.UNICODE) if len(word) > 1]
 
 
-def speech_to_text(path):
+def speech_to_text(path, language=None):
     from faster_whisper import WhisperModel
 
     model = WhisperModel(os.environ.get("TRIPCREW_WHISPER_MODEL", "small"),
                          device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(str(path))
+    segments, _ = model.transcribe(str(path), **({"language": language} if language else {}))
     return " ".join(segment.text.strip() for segment in segments).strip()
 
 

@@ -111,6 +111,8 @@ def parser():
 
     transcribe = groups.add_parser("transcribe", help="Turn a local voice message or audio file into text; CPU only, nothing is uploaded.")
     transcribe.add_argument("path")
+    # Auto-detection heard a Singaporean English speaker as Malay and returned Malay text.
+    transcribe.add_argument("--language", default="en", help="Spoken language code; defaults to en.")
 
     reel = groups.add_parser("reel", help="Extract metadata, then let the agent verify the place by web search.")
     commands = reel.add_subparsers(dest="action", required=True)
@@ -613,7 +615,7 @@ def transcribe_command(args, store):
     path = Path(args.path)
     if not path.is_file():
         raise ValueError("Audio file not found.")
-    transcript = reels.speech_to_text(path)
+    transcript = reels.speech_to_text(path, args.language)
     if not transcript:
         raise ValueError("No speech found in that audio.")
     return {"transcript": transcript}, [transcript]

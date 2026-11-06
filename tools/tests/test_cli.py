@@ -566,8 +566,8 @@ def test_transcribe_returns_text_and_rejects_missing_or_silent_audio(call, tmp_p
     from tripcrew import reels
     voice = tmp_path / "voice.ogg"
     voice.write_bytes(b"audio")
-    monkeypatch.setattr(reels, "speech_to_text", lambda path: "Wagyu beef 3000 yen")
-    assert call("transcribe", str(voice))["transcript"] == "Wagyu beef 3000 yen"
+    monkeypatch.setattr(reels, "speech_to_text", lambda path, language: f"Wagyu beef 3000 yen {language}")
+    assert call("transcribe", str(voice))["transcript"] == "Wagyu beef 3000 yen en"
     assert "not found" in call("transcribe", str(tmp_path / "missing.ogg"), ok=False)["reason"]
-    monkeypatch.setattr(reels, "speech_to_text", lambda path: "")
+    monkeypatch.setattr(reels, "speech_to_text", lambda path, language: "")
     assert "No speech" in call("transcribe", str(voice), ok=False)["reason"]
